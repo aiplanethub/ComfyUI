@@ -489,7 +489,6 @@ class PromptServer():
                         number = -number
 
                 self.number += 1
-            logging.info("In server.py Json data received from workflow:\n%s", json.dumps(json_data, indent=2))
             if "prompt" in json_data:
                 prompt = json_data["prompt"]
                 valid = execution.validate_prompt(prompt)

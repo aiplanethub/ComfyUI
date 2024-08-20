@@ -1,5 +1,12 @@
+import os
 import httpx
 from typing import Dict
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Get the base URL from the environment variable
+base_api_url = os.getenv('BASE_API_URL')
 
 async def call_api(node_name: str, payload: Dict) -> Dict:
     """
@@ -12,8 +19,7 @@ async def call_api(node_name: str, payload: Dict) -> Dict:
     Returns:
         Dict: The response from the API.
     """
-    # Format the URL to include the node_name
-    api_url = f"http://localhost:8000/api/v1/private/applications/endpoint/{node_name}"
+    api_url = f"{base_api_url}{node_name}"
     
     async with httpx.AsyncClient() as client:
         response = await client.post(api_url, json=payload)

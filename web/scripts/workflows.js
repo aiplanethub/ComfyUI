@@ -159,7 +159,6 @@ export class ComfyWorkflowManager extends EventTarget {
 	}
 
 	storePrompt({ nodes, id }) {
-		console.log("Nodes in storePrompt: ",nodes);
 		this.queuedPrompts[id] ??= {};
 		this.queuedPrompts[id].nodes = {
 			...nodes.reduce((p, n) => {
@@ -293,7 +292,6 @@ export class ComfyWorkflow {
 
 	async getWorkflowData() {
 		const resp = await api.getUserData("workflows/" + this.path);
-		console.log("Workflow data at workflow.js: ",resp)
 		if (resp.status !== 200) {
 			alert(`Error loading workflow file '${this.path}': ${resp.status} ${resp.statusText}`);
 			return;
@@ -306,7 +304,6 @@ export class ComfyWorkflow {
 			await this.manager.app.loadGraphData(this.changeTracker.activeState, true, true, this);
 		} else {
 			const data = await this.getWorkflowData();
-			console.log("Worlflow data in workflow.js: ",data);
 			if (!data) return;
 			await this.manager.app.loadGraphData(data, true, true, this);
 		}

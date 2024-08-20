@@ -69,126 +69,12 @@ class InputNode:
 
         try:
             response = asyncio.run(api.call_api("InputNode", payload))
-            print(f"API response for InputNode : {response}")
+            logging.info(f"API response for InputNode : {response}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logging.error(f"An error occurred: {e}")
             return (None,) 
             
         return ({"instruction": instruction, "name": name},)
-class AzureChatConfigModelNode:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "api_key": ("STRING", {"multiline": False, "default": ""}),
-                "base_url": ("STRING", {"multiline": False, "default": ""}),
-                "deployment_name": ("STRING", {"multiline": False, "default": ""}),
-                "model_name": ("STRING", {"multiline": False, "default": ""}),
-                "openai_api_version": ("STRING", {"multiline": False, "default": ""}),
-            },
-        }
-    
-    RETURN_TYPES = ("LLM",)
-    FUNCTION = "configure"
-    CATEGORY = "LLM Config"
-
-    def configure(self, api_key, base_url, deployment_name, model_name, openai_api_version):
-        payload = {
-            "api_key": api_key,
-            "base_url": base_url,
-            "deployment_name": deployment_name,
-            "model_name": model_name,
-            "openai_api_version": openai_api_version,
-        }
-
-        try:
-            response = asyncio.run(api.call_api("AzureChatConfigModelNode", payload))
-            print(f"API response for AzureChatConfigModelNode : {response}")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return (None,) 
-
-        config = {
-            "api_key": api_key,
-            "base_url": base_url,
-            "deployment_name": deployment_name,
-            "model_name": model_name,
-            "openai_api_version": openai_api_version,
-        }
-        return (config,)
-
-class GroqConfigModelNode:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "groq_api_key": ("STRING", {"multiline": False, "default": ""}),
-                "model_name": ("STRING", {"multiline": False, "default": ""}),
-                "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 1.0, "step": 0.1}),
-            },
-        }
-    
-    RETURN_TYPES = ("LLM",)
-    FUNCTION = "configure"
-    CATEGORY = "LLM Config"
-
-    def configure(self, groq_api_key, model_name, temperature):
-        config = {
-            "groq_api_key": groq_api_key,
-            "model_name": model_name,
-            "temperature": temperature,
-        }
-        return (config,)
-
-class GeminiConfigModelNode:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "google_api_key": ("STRING", {"multiline": False, "default": ""}),
-                "model_name": ("STRING", {"multiline": False, "default": ""}),
-                "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 1.0, "step": 0.1}),
-            },
-        }
-    
-    RETURN_TYPES = ("LLM",)
-    FUNCTION = "configure"
-    CATEGORY = "LLM Config"
-
-    def configure(self, google_api_key, model_name, temperature):
-        config = {
-            "google_api_key": google_api_key,
-            "model_name": model_name,
-            "temperature": temperature,
-        }
-        return (config,)
-
-class HuggingFaceConfigModelNode:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "api_token": ("STRING", {"multiline": False, "default": ""}),
-                "max_new_tokens": ("INT", {"default": 50, "min": 1, "max": 1000}),
-                "model_name": ("STRING", {"multiline": False, "default": ""}),
-                "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 1.0, "step": 0.1}),
-            },
-        }
-    
-    RETURN_TYPES = ("LLM",)
-    FUNCTION = "configure"
-    CATEGORY = "LLM Config"
-
-    def configure(self, api_token, max_new_tokens, model_name, temperature):
-        config = {
-            "api_token": api_token,
-            "max_new_tokens": max_new_tokens,
-            "model_name": model_name,
-            "temperature": temperature,
-        }
-        return (config,)
-
-
 class LLMNode:
     LLM_PROVIDERS = ["Azure", "Groq", "Claude", "OpenAI"]
     @classmethod
@@ -210,9 +96,9 @@ class LLMNode:
 
         try:
             response = asyncio.run(api.call_api("LLMNode", payload))
-            print(f"API response for LLMNode : {response}")
+            logging.info(f"API response for LLMNode : {response}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logging.error(f"An error occurred: {e}")
             return (None,) 
 
         return (llm_provider_name,)
@@ -237,9 +123,9 @@ class KnowledgeBaseNode:
 
         try:
             response = asyncio.run(api.call_api("KnowledgeBaseNode", payload))
-            print(f"API response for KnowledgeBaseNode : {response}")
+            logging.info(f"API response for KnowledgeBaseNode : {response}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logging.error(f"An error occurred: {e}")
             return (None,) 
 
         return (knowledgebase_name,)
@@ -273,9 +159,9 @@ class MemoryNode:
 
         try:
             response = asyncio.run(api.call_api("MemoryNode", payload))
-            print(f"API response for MemoryNode : {response}")
+            logging.info(f"API response for MemoryNode : {response}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logging.error(f"An error occurred: {e}")
             return (None,) 
 
         config = {
@@ -309,9 +195,9 @@ class ToolsNode:
 
         try:
             response = asyncio.run(api.call_api("ToolsNode", payload))
-            print(f"API response for ToolsNode : {response}")
+            logging.info(f"API response for ToolsNode : {response}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logging.error(f"An error occurred: {e}")
             return (None,) 
 
         return (tools,)
@@ -345,9 +231,9 @@ class TaskPlannerNode:
 
         try:
             response = asyncio.run(api.call_api("TaskPlannerNode", payload))
-            print(f"API response for TaskPlannerNode : {response}")
+            logging.info(f"API response for TaskPlannerNode : {response}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logging.error(f"An error occurred: {e}")
             return (None,) 
 
         task_plan = self.generate_task_plan(llm_config, knowledge_base, available_actions)
@@ -367,10 +253,10 @@ class TaskPlannerNode:
         }
 
         try:
-            response = api.call_api("TaskPlannerNode", payload)
-            print(f"API response for TaskPlannerNode : {response}")
+            response = asyncio.run(api.call_api("TaskPlannerNode", payload))
+            logging.info(f"API response for TaskPlannerNode : {response}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logging.error(f"An error occurred: {e}")
             return (None,) 
 
         # Placeholder for actual task planning logic
@@ -434,9 +320,9 @@ class WorkerNode:
 
         try:
             response = asyncio.run(api.call_api("WorkerNode", payload))
-            print(f"API response for WorkerNode : {response}")
+            logging.info(f"API response for WorkerNode : {response}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logging.error(f"An error occurred: {e}")
             return (None,) 
 
         if task_plan["current_task"] >= len(task_plan["planned_tasks"]):
@@ -477,9 +363,9 @@ class OutputNode:
 
         try:
             response = asyncio.run(api.call_api("OutputNode", payload))
-            print(f"API response for OutputNode : {response}")
+            logging.info(f"API response for OutputNode : {response}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logging.error(f"An error occurred: {e}")
             return (None,) 
 
         return (input,)
@@ -487,10 +373,6 @@ class OutputNode:
 # ComfyUI node registration
 NODE_CLASS_MAPPINGS = {
     "InputNode": InputNode,
-    "AzureChatConfigModelNode": AzureChatConfigModelNode,
-    "GroqConfigModelNode": GroqConfigModelNode,
-    "GeminiConfigModelNode": GeminiConfigModelNode,
-    "HuggingFaceConfigModelNode": HuggingFaceConfigModelNode,
     "LLMNode": LLMNode,
     "KnowledgeBaseNode": KnowledgeBaseNode,
     "ToolsNode": ToolsNode,
