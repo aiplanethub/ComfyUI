@@ -11,6 +11,8 @@ import { getStorageValue, setStorageValue } from "./utils.js";
 import { ComfyWorkflowManager } from "./workflows.js";
 export const ANIM_PREVIEW_WIDGET = "$$comfy_animation_preview";
 
+//graph_.nodes
+//registerNodeDef
 function sanitizeNodeName(string) {
 	let entityMap = {
 	'&': '',
@@ -1328,7 +1330,7 @@ export class ComfyApp {
 		api.addEventListener("reconnected", () => {
 			this.ui.dialog.close();
 		});
-
+		//here
 		api.addEventListener("progress", ({ detail }) => {
 			if (this.workflowManager.activePrompt?.workflow 
 				&& this.workflowManager.activePrompt.workflow !== this.workflowManager.activeWorkflow) return;
@@ -1857,6 +1859,8 @@ export class ComfyApp {
 	 * @param { import("./workflows.js").ComfyWorkflowInstance | null } workflow The workflow
 	 */
 	async loadGraphData(graphData, clean = true, restore_view = true, workflow = null) {
+
+		console.log("Graph data in app.js loadGraphData: ", graphData);
 		if (clean !== false) {
 			this.clean();
 		}
@@ -2138,7 +2142,8 @@ export class ComfyApp {
 				}
 			}
 		}
-
+		console.log("Workflow in graphToPrompt in app.js: ", workflow);
+		console.log("Output in graphToPrompt in app.js: ", output);
 		return { workflow, output };
 	}
 
@@ -2178,7 +2183,7 @@ export class ComfyApp {
 
 		return `Error occurred when executing ${nodeType}:\n\n${error.exception_message}\n\n${traceback}`
 	}
-
+	//here
 	async queuePrompt(number, batchCount = 1) {
 		this.#queueItems.push({ number, batchCount });
 

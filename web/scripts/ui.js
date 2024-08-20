@@ -75,6 +75,7 @@ export function $el(tag, propsOrChildren, children) {
 }
 
 function dragElement(dragEl, settings) {
+	console.log("Drag element: ",dragEl);
 	var posDiffX = 0,
 		posDiffY = 0,
 		posStartX = 0,
@@ -445,6 +446,7 @@ export class ComfyUI {
 					}),
 				]),
 			]),
+			//here
 			$el("button.comfy-queue-btn", {
 				id: "queue-button",
 				textContent: "Queue Prompt",

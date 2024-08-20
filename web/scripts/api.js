@@ -400,7 +400,9 @@ class ComfyApi extends EventTarget {
 	 * @returns { Promise<Response> } The fetch response object
 	 */
 	async getUserData(file, options) {
-		return this.fetchApi(`/userdata/${encodeURIComponent(file)}`, options);
+		const response = await this.fetchApi(`/userdata/${encodeURIComponent(file)}`, options);
+		console.log('API Response from api.js getUserData:', response.body);
+		return response;
 	}
 
 	/**

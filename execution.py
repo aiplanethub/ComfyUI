@@ -630,6 +630,7 @@ def full_type_name(klass):
     return module + '.' + klass.__qualname__
 
 def validate_prompt(prompt):
+    print("Prompt: ",prompt)
     outputs = set()
     for x in prompt:
         if 'class_type' not in prompt[x]:
