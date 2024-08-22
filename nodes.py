@@ -1,7 +1,6 @@
 import asyncio
 import requests
 import torch
-
 import os
 import sys
 import json
@@ -176,31 +175,47 @@ class MemoryNode:
         
         return (config,)
 
-
 class ToolsNode:
+    TOOL_NAMES = [
+        "DocumentLoader",
+        "GitHubSearchTool",
+        "SerpSearch",
+        "SerperSearch",
+        "TavilyQASearch",
+        "UnstructuredIO",
+        "WebLoader",
+        "YouTubeSearch"
+    ]
+
     @classmethod
     def INPUT_TYPES(s):
+        # No required inputs since we're using switches instead
         return {
-            "required": {
-                "tools": (["DocumentLoader", "GitHubSearchTool", "SerpSearch", "SerperSearch", "TavilyQASearch", "UnstructuredIO", "WebLoader", "YouTubeSearch"],),
-            },
+            "required": {},
+            "optional": {
+                tool: ("BOOLEAN", {"default": False}) for tool in s.TOOL_NAMES
+            }
         }
-    
-    RETURN_TYPES = ("BASE_ACTIONS",)
-    FUNCTION = "select_tools"
+
+    RETURN_TYPES = ("TOOL",)
+    FUNCTION = "output_tools"
     CATEGORY = "Actions"
 
-    def select_tools(self, tools):
-        payload = {"tools": tools}
+    def output_tools(self, **tool_states):
+        # Generate the list of selected tools
+        selected_tools = [tool for tool, state in tool_states.items() if state]
+
+        payload = {"selected_tools": selected_tools}
 
         try:
             response = asyncio.run(api.call_api("ToolsNode", payload))
             logging.info(f"API response for ToolsNode : {response}")
         except Exception as e:
             logging.error(f"An error occurred: {e}")
-            return (None,) 
+            return (None,)
 
-        return (tools,)
+        # Return the list of selected tools as TOOL
+        return (selected_tools,)
 
 class TaskPlannerNode:
 
@@ -210,10 +225,10 @@ class TaskPlannerNode:
             "required": {
                 "llm_config": ("LLM",),
                 "knowledge_base": ("KNOWLEDGE_BASE",),
-                "available_actions": ("BASE_ACTIONS",),
+                "available_actions": ("TOOL", {"multiple": True}),  # Accepting multiple actions as a list
                 "auto_assign": ("BOOLEAN", {"default": False}),
                 "memory": ("MEMORY",)
-            },
+            }
         }
     
     RETURN_TYPES = ("TASK_PLAN",)
@@ -221,12 +236,16 @@ class TaskPlannerNode:
     CATEGORY = "Task Planning"
 
     def plan_tasks(self, llm_config, knowledge_base, available_actions, auto_assign, memory):
+        # available_actions is expected to be a list or tuple
+        if not isinstance(available_actions, (list, tuple)):
+            available_actions = [available_actions]
+
         payload = {
-        "llm_config": llm_config,
-        "knowledge_base": knowledge_base,
-        "available_actions": available_actions,
-        "auto_assign": auto_assign,
-        "memory": memory
+            "llm_config": llm_config,
+            "knowledge_base": knowledge_base,
+            "available_actions": available_actions,
+            "auto_assign": auto_assign,
+            "memory": memory
         }
 
         try:
@@ -234,32 +253,21 @@ class TaskPlannerNode:
             logging.info(f"API response for TaskPlannerNode : {response}")
         except Exception as e:
             logging.error(f"An error occurred: {e}")
-            return (None,) 
+            return (None,)
 
+        # Process the task plan using the selected actions
         task_plan = self.generate_task_plan(llm_config, knowledge_base, available_actions)
     
         if auto_assign:
             task_plan["auto_assigned"] = True
         else:
             task_plan["auto_assigned"] = False
-        
+
         return (task_plan,)
+        
 
     def generate_task_plan(self, llm_config, knowledge_base, available_actions):
-        payload = {
-        "llm_config": llm_config,
-        "knowledge_base": knowledge_base,
-        "available_actions": available_actions,
-        }
-
-        try:
-            response = asyncio.run(api.call_api("TaskPlannerNode", payload))
-            logging.info(f"API response for TaskPlannerNode : {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,) 
-
-        # Placeholder for actual task planning logic
+        # Example task planning logic with available actions
         task_plan = {
             "llm_config": llm_config,
             "knowledge_base": knowledge_base,
@@ -268,19 +276,19 @@ class TaskPlannerNode:
                     "id": 0,
                     "description": "Analyze the objective",
                     "dependencies": [],
-                    "required_actions": available_actions[:2]  # Using first two actions as an example
+                    "required_actions": available_actions[:2]  # Example usage
                 },
                 {
                     "id": 1,
                     "description": "Research using knowledge base",
                     "dependencies": [0],
-                    "required_actions": available_actions[2:4]  # Using next two actions as an example
+                    "required_actions": available_actions[2:4]
                 },
                 {
                     "id": 2,
                     "description": "Formulate response",
                     "dependencies": [1],
-                    "required_actions": available_actions[4:]  # Using remaining actions as an example
+                    "required_actions": available_actions[4:]
                 }
             ],
             "current_task": 0,
@@ -298,7 +306,7 @@ class WorkerNode:
                 "task_plan": ("TASK_PLAN",),
                 "worker_id": ("INT", {"default": 0, "min": 0, "max": 99}),
                 "llm_config": ("LLM",),
-                "available_actions": ("BASE_ACTIONS",),
+                "available_actions": ("TOOL",),
             },
             "optional": {
                 "previous_output": ("WORKER_OUTPUT",),
