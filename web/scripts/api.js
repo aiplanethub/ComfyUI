@@ -204,6 +204,7 @@ class ComfyApi extends EventTarget {
 			prompt: output,
 			extra_data: { extra_pnginfo: { workflow } },
 		};
+		console.log("Body: ", JSON.stringify(body, null, 2));
 
 		if (number === -1) {
 			body.front = true;

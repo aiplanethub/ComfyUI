@@ -75,7 +75,7 @@ class InputNode:
             
         return ({"instruction": instruction, "name": name},)
 class LLMNode:
-    LLM_PROVIDERS = ["Azure", "Groq", "Claude", "OpenAI"]
+    LLM_PROVIDERS = ["azure", "groq", "claude", "openai"]
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -225,7 +225,7 @@ class TaskPlannerNode:
             "required": {
                 "llm_config": ("LLM",),
                 "knowledge_base": ("KNOWLEDGE_BASE",),
-                "available_actions": ("TOOL", {"multiple": True}),  # Accepting multiple actions as a list
+                "tools": ("TOOL", {"multiple": True}),  # Accepting multiple actions as a list
                 "auto_assign": ("BOOLEAN", {"default": False}),
                 "memory": ("MEMORY",)
             }
@@ -235,15 +235,15 @@ class TaskPlannerNode:
     FUNCTION = "plan_tasks"
     CATEGORY = "Task Planning"
 
-    def plan_tasks(self, llm_config, knowledge_base, available_actions, auto_assign, memory):
-        # available_actions is expected to be a list or tuple
-        if not isinstance(available_actions, (list, tuple)):
-            available_actions = [available_actions]
+    def plan_tasks(self, llm_config, knowledge_base, tools, auto_assign, memory):
+        # tools is expected to be a list or tuple
+        if not isinstance(tools, (list, tuple)):
+            tools = [tools]
 
         payload = {
             "llm_config": llm_config,
             "knowledge_base": knowledge_base,
-            "available_actions": available_actions,
+            "tools": tools,
             "auto_assign": auto_assign,
             "memory": memory
         }
@@ -256,7 +256,7 @@ class TaskPlannerNode:
             return (None,)
 
         # Process the task plan using the selected actions
-        task_plan = self.generate_task_plan(llm_config, knowledge_base, available_actions)
+        task_plan = self.generate_task_plan(llm_config, knowledge_base, tools)
     
         if auto_assign:
             task_plan["auto_assigned"] = True
@@ -266,7 +266,7 @@ class TaskPlannerNode:
         return (task_plan,)
         
 
-    def generate_task_plan(self, llm_config, knowledge_base, available_actions):
+    def generate_task_plan(self, llm_config, knowledge_base, tools):
         # Example task planning logic with available actions
         task_plan = {
             "llm_config": llm_config,
@@ -276,19 +276,19 @@ class TaskPlannerNode:
                     "id": 0,
                     "description": "Analyze the objective",
                     "dependencies": [],
-                    "required_actions": available_actions[:2]  # Example usage
+                    "required_actions": tools[:2]  # Example usage
                 },
                 {
                     "id": 1,
                     "description": "Research using knowledge base",
                     "dependencies": [0],
-                    "required_actions": available_actions[2:4]
+                    "required_actions": tools[2:4]
                 },
                 {
                     "id": 2,
                     "description": "Formulate response",
                     "dependencies": [1],
-                    "required_actions": available_actions[4:]
+                    "required_actions": tools[4:]
                 }
             ],
             "current_task": 0,
@@ -306,7 +306,7 @@ class WorkerNode:
                 "task_plan": ("TASK_PLAN",),
                 "worker_id": ("INT", {"default": 0, "min": 0, "max": 99}),
                 "llm_config": ("LLM",),
-                "available_actions": ("TOOL",),
+                "tools": ("TOOL",),
             },
             "optional": {
                 "previous_output": ("WORKER_OUTPUT",),
@@ -317,12 +317,12 @@ class WorkerNode:
     FUNCTION = "execute_task"
     CATEGORY = "Worker"
 
-    def execute_task(self, task_plan, worker_id, llm_config, available_actions, previous_output=None):
+    def execute_task(self, task_plan, worker_id, llm_config, tools, previous_output=None):
         payload = {
             "task_plan": task_plan,
             "worker_id": worker_id,
             "llm_config": llm_config,
-            "available_actions": available_actions,
+            "tools": tools,
             "previous_output": previous_output
         }
 

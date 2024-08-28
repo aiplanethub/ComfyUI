@@ -92,7 +92,7 @@ export const defaultGraph = {
           link: 21,
         },
         {
-          name: "available_actions",
+          name: "tools",
           type: "TOOL",
           link: 26,
           multiple: true,
@@ -185,7 +185,7 @@ export const defaultGraph = {
           link: 28,
         },
         {
-          name: "available_actions",
+          name: "tools",
           type: "TOOL",
           link: 29,
           multiple: true,
