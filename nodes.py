@@ -313,7 +313,7 @@ class WorkerNode:
             }
         }
     
-    RETURN_TYPES = ("WORKER_OUTPUT", "UPDATED_TASK_PLAN")
+    RETURN_TYPES = ("WORKER_OUTPUT",)
     FUNCTION = "execute_task"
     CATEGORY = "Worker"
 
@@ -348,7 +348,7 @@ class WorkerNode:
         else:
             task_result = f"Worker {worker_id} waiting: Dependencies not met for task {current_task['id']}"
         
-        return (task_result, task_plan)
+        return (task_result,)
 
 class OutputNode:
 
