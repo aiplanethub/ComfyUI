@@ -17,6 +17,8 @@ const ext = {
 					event.origin
 				)
 				
+			}else if(parsedEventData.event === "queuePrompt"){
+				await app.queuePrompt(0, app.batchCount)
 			}			
 		}
 		window.addEventListener("message", handleWorkflowEvents);
