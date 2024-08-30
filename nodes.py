@@ -45,17 +45,20 @@ def interrupt_processing(value=True):
     comfy.model_management.interrupt_current_processing(value)
 
 MAX_RESOLUTION=16384
-class InputNode:
+import asyncio
+import logging
+from api import api
 
+class InputNode:
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "instruction": ("STRING", {"multiline": False}),
                 "name": ("STRING", {"multiline": False}),
             },
         }
-    
+
     RETURN_TYPES = ("INPUT",)
     FUNCTION = "process"
     CATEGORY = "Input"
@@ -68,66 +71,69 @@ class InputNode:
 
         try:
             response = asyncio.run(api.call_api("InputNode", payload))
-            logging.info(f"API response for InputNode : {response}")
+            logging.info(f"API response for InputNode: {response}")
         except Exception as e:
             logging.error(f"An error occurred: {e}")
-            return (None,) 
-            
+            return (None,)
+        
         return ({"instruction": instruction, "name": name},)
+
+
 class LLMNode:
     LLM_PROVIDERS = ["azure", "groq", "claude", "openai"]
+
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "input": ("INPUT",),
-                "llm_provider_name": (s.LLM_PROVIDERS,),
+                "llm_provider_name": (cls.LLM_PROVIDERS,),
             },
         }
-    
+
     RETURN_TYPES = ("LLM",)
     FUNCTION = "select"
     CATEGORY = "LLM"
 
     def select(self, input, llm_provider_name):
-        # Placeholder - replace with actual knowledge base loading logic
         payload = {"input": input, "llm_provider_name": llm_provider_name}
 
         try:
             response = asyncio.run(api.call_api("LLMNode", payload))
-            logging.info(f"API response for LLMNode : {response}")
+            logging.info(f"API response for LLMNode: {response}")
         except Exception as e:
             logging.error(f"An error occurred: {e}")
-            return (None,) 
+            return (None,)
 
-        return (llm_provider_name,)
+        return ({"provider": llm_provider_name},)
+
 
 class KnowledgeBaseNode:
     KNOWLEDGE_BASES = ["General Knowledge", "Specialized Domain", "Custom KB 1", "Custom KB 2"]
+
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
-                "knowledgebase_name": (s.KNOWLEDGE_BASES,),
+                "knowledgebase_name": (cls.KNOWLEDGE_BASES,),
             },
         }
-    
+
     RETURN_TYPES = ("KNOWLEDGE_BASE",)
     FUNCTION = "select"
     CATEGORY = "Knowledge Base"
 
     def select(self, knowledgebase_name):
-        # Placeholder - replace with actual knowledge base loading logic
         payload = {"knowledgebase_name": knowledgebase_name}
 
         try:
             response = asyncio.run(api.call_api("KnowledgeBaseNode", payload))
-            logging.info(f"API response for KnowledgeBaseNode : {response}")
+            logging.info(f"API response for KnowledgeBaseNode: {response}")
         except Exception as e:
             logging.error(f"An error occurred: {e}")
-            return (None,) 
+            return (None,)
 
-        return (knowledgebase_name,)
+        return ({"knowledgebase_name": knowledgebase_name},)
 
 
 class MemoryNode:
@@ -150,50 +156,41 @@ class MemoryNode:
 
     def generate_config(self, collection_name, host="", port=8000, persist_path=""):
         payload = {
-        "collection_name": collection_name,
-        "host": host,
-        "port": port,
-        "persist_path": persist_path
+            "collection_name": collection_name,
+            "host": host,
+            "port": port,
+            "persist_path": persist_path
         }
 
         try:
             response = asyncio.run(api.call_api("MemoryNode", payload))
-            logging.info(f"API response for MemoryNode : {response}")
+            logging.info(f"API response for MemoryNode: {response}")
         except Exception as e:
             logging.error(f"An error occurred: {e}")
-            return (None,) 
+            return (None,)
 
         config = {
             "collection_name": collection_name,
+            "host": host,
+            "port": port,
+            "persist_path": persist_path
         }
-        
-        if host and port:
-            config["host"] = host
-            config["port"] = port
-        elif persist_path:
-            config["persist_path"] = persist_path
-        
+
         return (config,)
+
 
 class ToolsNode:
     TOOL_NAMES = [
-        "DocumentLoader",
-        "GitHubSearchTool",
-        "SerpSearch",
-        "SerperSearch",
-        "TavilyQASearch",
-        "UnstructuredIO",
-        "WebLoader",
-        "YouTubeSearch"
+        "DocumentLoader", "GitHubSearchTool", "SerpSearch",
+        "SerperSearch", "TavilyQASearch", "UnstructuredIO",
+        "WebLoader", "YouTubeSearch", "DuckDuckGoNewsSearch", "WebBaseContextTool"
     ]
 
     @classmethod
-    def INPUT_TYPES(s):
-        # No required inputs since we're using switches instead
+    def INPUT_TYPES(cls):
         return {
-            "required": {},
-            "optional": {
-                tool: ("BOOLEAN", {"default": False}) for tool in s.TOOL_NAMES
+            "required": {
+                tool: ("BOOLEAN", {"default": False}) for tool in cls.TOOL_NAMES
             }
         }
 
@@ -202,41 +199,38 @@ class ToolsNode:
     CATEGORY = "Actions"
 
     def output_tools(self, **tool_states):
-        # Generate the list of selected tools
         selected_tools = [tool for tool, state in tool_states.items() if state]
 
         payload = {"selected_tools": selected_tools}
 
         try:
             response = asyncio.run(api.call_api("ToolsNode", payload))
-            logging.info(f"API response for ToolsNode : {response}")
+            logging.info(f"API response for ToolsNode: {response}")
         except Exception as e:
             logging.error(f"An error occurred: {e}")
             return (None,)
 
-        # Return the list of selected tools as TOOL
         return (selected_tools,)
 
-class TaskPlannerNode:
 
+class TaskPlannerNode:
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "llm_config": ("LLM",),
                 "knowledge_base": ("KNOWLEDGE_BASE",),
-                "tools": ("TOOL", {"multiple": True}),  # Accepting multiple actions as a list
+                "tools": ("TOOL", {"multiple": True}),
                 "auto_assign": ("BOOLEAN", {"default": False}),
                 "memory": ("MEMORY",)
             }
         }
-    
+
     RETURN_TYPES = ("TASK_PLAN",)
     FUNCTION = "plan_tasks"
     CATEGORY = "Task Planning"
 
     def plan_tasks(self, llm_config, knowledge_base, tools, auto_assign, memory):
-        # tools is expected to be a list or tuple
         if not isinstance(tools, (list, tuple)):
             tools = [tools]
 
@@ -250,24 +244,18 @@ class TaskPlannerNode:
 
         try:
             response = asyncio.run(api.call_api("TaskPlannerNode", payload))
-            logging.info(f"API response for TaskPlannerNode : {response}")
+            logging.info(f"API response for TaskPlannerNode: {response}")
         except Exception as e:
             logging.error(f"An error occurred: {e}")
             return (None,)
 
-        # Process the task plan using the selected actions
         task_plan = self.generate_task_plan(llm_config, knowledge_base, tools)
-    
-        if auto_assign:
-            task_plan["auto_assigned"] = True
-        else:
-            task_plan["auto_assigned"] = False
+
+        task_plan["auto_assigned"] = auto_assign
 
         return (task_plan,)
-        
 
     def generate_task_plan(self, llm_config, knowledge_base, tools):
-        # Example task planning logic with available actions
         task_plan = {
             "llm_config": llm_config,
             "knowledge_base": knowledge_base,
@@ -276,7 +264,7 @@ class TaskPlannerNode:
                     "id": 0,
                     "description": "Analyze the objective",
                     "dependencies": [],
-                    "required_actions": tools[:2]  # Example usage
+                    "required_actions": tools[:2]
                 },
                 {
                     "id": 1,
@@ -294,10 +282,15 @@ class TaskPlannerNode:
             "current_task": 0,
             "completed_tasks": {}
         }
-        
+
         return task_plan
 
 class WorkerNode:
+    TOOL_NAMES = [
+        "DocumentLoader", "GitHubSearchTool", "SerpSearch",
+        "SerperSearch", "TavilyQASearch", "UnstructuredIO",
+        "WebLoader", "YouTubeSearch", "WebBaseContextTool", "DuckDuckGoNewsSearch"
+    ]
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -306,77 +299,84 @@ class WorkerNode:
                 "task_plan": ("TASK_PLAN",),
                 "worker_id": ("INT", {"default": 0, "min": 0, "max": 99}),
                 "llm_config": ("LLM",),
-                "tools": ("TOOL",),
+                **{tool: ("BOOLEAN", {"default": False}) for tool in cls.TOOL_NAMES}
             },
             "optional": {
                 "previous_output": ("WORKER_OUTPUT",),
             }
         }
-    
+
     RETURN_TYPES = ("WORKER_OUTPUT",)
     FUNCTION = "execute_task"
     CATEGORY = "Worker"
 
-    def execute_task(self, task_plan, worker_id, llm_config, tools, previous_output=None):
-        payload = {
-            "task_plan": task_plan,
-            "worker_id": worker_id,
-            "llm_config": llm_config,
-            "tools": tools,
-            "previous_output": previous_output
+    def execute_task(self, task_plan, worker_id, llm_config, previous_output=None, **tools):
+        # Extract the tool states
+        tool_states = [tools.get(tool, False) for tool in self.TOOL_NAMES]
+
+        # Combine worker_id and tool states into widgets_values for UI rendering
+        widgets_values = [worker_id + 1] + tool_states
+
+        # Prepare the task result
+        task_result = {
+            "worker_id": worker_id + 1,
+            "tools": {tool: tools.get(tool, False) for tool in self.TOOL_NAMES}
         }
 
-        try:
-            response = asyncio.run(api.call_api("WorkerNode", payload))
-            logging.info(f"API response for WorkerNode : {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,) 
+        # Return the task result and widgets_values for UI rendering
+        return (task_result, widgets_values)
 
-        if task_plan["current_task"] >= len(task_plan["planned_tasks"]):
-            return ("All tasks completed", task_plan)
-
-        current_task = task_plan["planned_tasks"][task_plan["current_task"]]
-        
-        if all(dep in task_plan["completed_tasks"] for dep in current_task["dependencies"]):
-            task_result = f"Worker {worker_id} executed: {current_task['description']} using actions: {', '.join(current_task['required_actions'])}"
-            if previous_output:
-                task_result += f" Using previous output: {previous_output}"
-            
-            task_plan["completed_tasks"][current_task["id"]] = task_result
-            task_plan["current_task"] += 1
-        else:
-            task_result = f"Worker {worker_id} waiting: Dependencies not met for task {current_task['id']}"
-        
-        return (task_result,)
 
 class OutputNode:
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "input": ("WORKER_OUTPUT",),  # Accept any input type
+                "input": ("WORKER_OUTPUT",),
             },
         }
-    
+
     RETURN_TYPES = ("OUTPUT",)
     FUNCTION = "process_output"
     OUTPUT_NODE = True
     CATEGORY = "Output"
 
     def process_output(self, input):
-        # Process the input here
         payload = {"input": input}
 
         try:
             response = asyncio.run(api.call_api("OutputNode", payload))
-            logging.info(f"API response for OutputNode : {response}")
+            logging.info(f"API response for OutputNode: {response}")
         except Exception as e:
             logging.error(f"An error occurred: {e}")
-            return (None,) 
+            return (None,)
 
         return (input,)
+
+
+# ComfyUI node registration
+NODE_CLASS_MAPPINGS = {
+    "InputNode": InputNode,
+    "LLMNode": LLMNode,
+    "KnowledgeBaseNode": KnowledgeBaseNode,
+    "ToolsNode": ToolsNode,
+    "TaskPlannerNode": TaskPlannerNode,
+    "WorkerNode": WorkerNode,
+    "OutputNode": OutputNode,
+    "MemoryNode": MemoryNode
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "InputNode": "Input",
+    "LLMNode": "LLM Processor",
+    "KnowledgeBaseNode": "Knowledge Base",
+    "ToolsNode": "Tools",
+    "TaskPlannerNode": "Task Planner",
+    "WorkerNode": "Worker",
+    "OutputNode": "Output",
+    "MemoryNode": "Memory"
+}
+
 
 # ComfyUI node registration
 NODE_CLASS_MAPPINGS = {
