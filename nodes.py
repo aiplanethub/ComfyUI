@@ -312,10 +312,24 @@ class WorkerNode:
 
     def execute_task(self, task_plan, worker_id, llm_config, previous_output=None, **tools):
         # Extract the tool states
-        tool_states = [tools.get(tool, False) for tool in self.TOOL_NAMES]
+        selected_tools = [tool for tool, state in tools.items() if state]
+        
+        # Create the payload for the API call
+        payload = {
+            "task_plan": task_plan,
+            "worker_id": worker_id,
+            "llm_config": llm_config,
+            "selected_tools": selected_tools,
+            "previous_output": previous_output
+        }
 
-        # Combine worker_id and tool states into widgets_values for UI rendering
-        widgets_values = [worker_id + 1] + tool_states
+        try:
+            # Call the API using asyncio
+            response = asyncio.run(api.call_api("WorkerNode", payload))
+            logging.info(f"API response for WorkerNode: {response}")
+        except Exception as e:
+            logging.error(f"An error occurred: {e}")
+            return (None,)
 
         # Prepare the task result
         task_result = {
@@ -323,10 +337,8 @@ class WorkerNode:
             "tools": {tool: tools.get(tool, False) for tool in self.TOOL_NAMES}
         }
 
-        # Return the task result and widgets_values for UI rendering
-        return (task_result, widgets_values)
-
-
+        # Return the task result
+        return (task_result,)
 class OutputNode:
     @classmethod
     def INPUT_TYPES(cls):
