@@ -719,6 +719,7 @@ export class ComfyUI {
               const response = await fetch(
                 `${window.env.APPLICATION_API_BASE_URL}${application_id}/create-template`,
                 {
+                  method: "PATCH",
                   headers: {
                     Authorization: `Bearer ${accessToken}`,
                   },
