@@ -80,14 +80,12 @@ class InputNode:
 
 
 class LLMNode:
-    LLM_PROVIDERS = ["azure", "groq", "claude", "openai"]
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "input": ("INPUT",),
-                "llm_provider_name": (cls.LLM_PROVIDERS,),
+                "llm_config_name": ("STRING", {"multiline": False}),
             },
         }
 
@@ -95,8 +93,9 @@ class LLMNode:
     FUNCTION = "select"
     CATEGORY = "LLM"
 
-    def select(self, input, llm_provider_name):
-        payload = {"input": input, "llm_provider_name": llm_provider_name}
+    def select(self, input, llm_config_name):
+        # Use the llm_config_name directly from the widget values
+        payload = {"input": input, "llm_config_name": llm_config_name}
 
         try:
             response = asyncio.run(api.call_api("LLMNode", payload))
@@ -105,17 +104,15 @@ class LLMNode:
             logging.error(f"An error occurred: {e}")
             return (None,)
 
-        return ({"provider": llm_provider_name},)
-
+        # Return the LLM configuration
+        return ({"provider": llm_config_name},)
 
 class KnowledgeBaseNode:
-    KNOWLEDGE_BASES = ["General Knowledge", "Specialized Domain", "Custom KB 1", "Custom KB 2"]
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "knowledgebase_name": (cls.KNOWLEDGE_BASES,),
+                "knowledgebases": ("STRING", {"multiline": True, "default": ""}),  # Placeholder for dynamic values
             },
         }
 
@@ -123,18 +120,37 @@ class KnowledgeBaseNode:
     FUNCTION = "select"
     CATEGORY = "Knowledge Base"
 
-    def select(self, knowledgebase_name):
-        payload = {"knowledgebase_name": knowledgebase_name}
+    def __init__(self, knowledge_bases=None):
+        # Initialize with the knowledge bases provided dynamically or default to empty
+        self.knowledge_bases = knowledge_bases if knowledge_bases else []
+
+    def select(self, knowledgebases):
+        # This method handles the processing of the selected knowledge bases
+        payload = {
+            "knowledgebases": knowledgebases  # Payload to send the selected bases to the backend or workflow
+        }
 
         try:
+            # Call the backend API to process the knowledge bases asynchronously
             response = asyncio.run(api.call_api("KnowledgeBaseNode", payload))
             logging.info(f"API response for KnowledgeBaseNode: {response}")
         except Exception as e:
             logging.error(f"An error occurred: {e}")
             return (None,)
 
-        return ({"knowledgebase_name": knowledgebase_name},)
+        # Return the selected knowledge base for use in the workflow
+        return ({"knowledgebases": knowledgebases},)
 
+    @classmethod
+    def update_knowledge_bases(cls, knowledge_bases):
+        # Dynamically update INPUT_TYPES to handle all received knowledge bases
+        inputs = {
+            "required": {
+                f"knowledgebase_{idx+1}": ("STRING", {"default": kb, "multiline": False})
+                for idx, kb in enumerate(knowledge_bases)
+            }
+        }
+        cls.INPUT_TYPES = lambda: inputs  # Update the class input types dynamically
 
 class MemoryNode:
     @classmethod
@@ -297,7 +313,7 @@ class WorkerNode:
         return {
             "required": {
                 "task_plan": ("TASK_PLAN",),
-                "worker_id": ("INT", {"default": 0, "min": 0, "max": 99}),
+                "worker_role": ("STRING", {"default": "Worker Role"}),  # Worker role comes first
                 "llm_config": ("LLM",),
                 **{tool: ("BOOLEAN", {"default": False}) for tool in cls.TOOL_NAMES}
             },
@@ -310,14 +326,14 @@ class WorkerNode:
     FUNCTION = "execute_task"
     CATEGORY = "Worker"
 
-    def execute_task(self, task_plan, worker_id, llm_config, previous_output=None, **tools):
+    def execute_task(self, task_plan, worker_role, llm_config, previous_output=None, **tools):
         # Extract the tool states
         selected_tools = [tool for tool, state in tools.items() if state]
         
         # Create the payload for the API call
         payload = {
             "task_plan": task_plan,
-            "worker_id": worker_id,
+            "worker_role": worker_role,  # Display worker role instead of worker id
             "llm_config": llm_config,
             "selected_tools": selected_tools,
             "previous_output": previous_output
@@ -331,14 +347,15 @@ class WorkerNode:
             logging.error(f"An error occurred: {e}")
             return (None,)
 
-        # Prepare the task result
+        # Prepare the task result with worker role
         task_result = {
-            "worker_id": worker_id + 1,
+            "worker_role": worker_role,  # Show worker role at the top
             "tools": {tool: tools.get(tool, False) for tool in self.TOOL_NAMES}
         }
 
         # Return the task result
         return (task_result,)
+
 class OutputNode:
     @classmethod
     def INPUT_TYPES(cls):
