@@ -10,6 +10,15 @@
 		<link rel="stylesheet" type="text/css" href="./user.css" />
 		<script type="text/javascript" src="./lib/litegraph.core.js"></script>
 		<script type="text/javascript" src="./lib/litegraph.extensions.js" defer></script>
+		
+		<!-- Inject environment variables -->
+		<script>
+			window.env = {
+				APPLICATION_API_BASE_URL: "http://localhost:8000/api/v1/private/applications/",
+				ACCESS_TOKEN_API_BASE_URL: "http://localhost:8000/api/v1/private/token/",
+			};
+		</script>
+
 		<script type="module">
 			import { app } from "./scripts/app.js";
 			await app.setup();

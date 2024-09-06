@@ -12,6 +12,8 @@ extra_model_paths.yaml
 .vscode/
 .idea/
 venv/
+env/
+.env
 /web/extensions/*
 !/web/extensions/logging.js.example
 !/web/extensions/core/

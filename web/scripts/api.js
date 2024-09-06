@@ -204,6 +204,7 @@ class ComfyApi extends EventTarget {
 			prompt: output,
 			extra_data: { extra_pnginfo: { workflow } },
 		};
+		console.log("Body: ", JSON.stringify(body, null, 2));
 
 		if (number === -1) {
 			body.front = true;
@@ -400,7 +401,8 @@ class ComfyApi extends EventTarget {
 	 * @returns { Promise<Response> } The fetch response object
 	 */
 	async getUserData(file, options) {
-		return this.fetchApi(`/userdata/${encodeURIComponent(file)}`, options);
+		const response = await this.fetchApi(`/userdata/${encodeURIComponent(file)}`, options);
+		return response;
 	}
 
 	/**

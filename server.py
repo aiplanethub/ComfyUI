@@ -477,8 +477,6 @@ class PromptServer():
         @routes.post("/prompt")
         async def post_prompt(request):
             logging.info("got prompt")
-            resp_code = 200
-            out_string = ""
             json_data =  await request.json()
             json_data = self.trigger_on_prompt(json_data)
 
@@ -491,7 +489,6 @@ class PromptServer():
                         number = -number
 
                 self.number += 1
-
             if "prompt" in json_data:
                 prompt = json_data["prompt"]
                 valid = execution.validate_prompt(prompt)
