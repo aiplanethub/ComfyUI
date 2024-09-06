@@ -1787,13 +1787,13 @@ export class ComfyApp {
       await this.loadGraphData();
     }
   
-    setInterval(() => {
-      const workflow = JSON.stringify(this.graph.serialize());
-      localStorage.setItem("workflow", workflow);
-      if (api.clientId) {
-        sessionStorage.setItem(`workflow:${api.clientId}`, workflow);
-      }
-    }, 1000);
+    // setInterval(() => {
+    //   const workflow = JSON.stringify(this.graph.serialize());
+    //   localStorage.setItem("workflow", workflow);
+    //   if (api.clientId) {
+    //     sessionStorage.setItem(`workflow:${api.clientId}`, workflow);
+    //   }
+    // }, 1000);
   
     this.#addDrawNodeHandler();
     this.#addDrawGroupsHandler();
@@ -2067,11 +2067,11 @@ export class ComfyApp {
     let reset_invalid_values = false;
     if (!graphData) {
       // Check for stored_workflow before falling back to defaultGraph
-      if (localStorage.getItem("stored_workflow")) {
-        graphData = JSON.parse(localStorage.getItem("stored_workflow"));
-      } else {
-        graphData = defaultGraph;
-      }
+      // if (localStorage.getItem("stored_workflow")) {
+      //   graphData = JSON.parse(localStorage.getItem("stored_workflow"));
+      // } else {
+      //   graphData = defaultGraph;
+      // }
       reset_invalid_values = true;
     }
   
