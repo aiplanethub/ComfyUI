@@ -1,21 +1,9 @@
 import asyncio
-import requests
-import torch
 import os
 import sys
-import json
-import hashlib
 import traceback
-import math
 import time
-import random
 import logging
-
-from PIL import Image, ImageOps, ImageSequence, ImageFile
-from PIL.PngImagePlugin import PngInfo
-
-import numpy as np
-import safetensors.torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy"))
 
@@ -35,8 +23,6 @@ from comfy.cli_args import args
 import importlib
 
 import folder_paths
-import latent_preview
-import node_helpers
 
 def before_node_execution():
     comfy.model_management.throw_exception_if_processing_interrupted()
@@ -45,9 +31,6 @@ def interrupt_processing(value=True):
     comfy.model_management.interrupt_current_processing(value)
 
 MAX_RESOLUTION=16384
-import asyncio
-import logging
-from api import api
 
 class InputNode:
     @classmethod
@@ -68,15 +51,8 @@ class InputNode:
             "instruction": instruction,
             "name": name
         }
-
-        try:
-            response = asyncio.run(api.call_api("InputNode", payload))
-            logging.info(f"API response for InputNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
         
-        return ({"instruction": instruction, "name": name},)
+        return (payload,)
 
 
 class LLMNode:
@@ -97,22 +73,15 @@ class LLMNode:
         # Use the llm_config_name directly from the widget values
         payload = {"input": input, "llm_config_name": llm_config_name}
 
-        try:
-            response = asyncio.run(api.call_api("LLMNode", payload))
-            logging.info(f"API response for LLMNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
         # Return the LLM configuration
-        return ({"provider": llm_config_name},)
+        return (payload,)
 
 class KnowledgeBaseNode:
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "knowledgebases": ("STRING", {"multiline": True, "default": ""}),  # Placeholder for dynamic values
+                "knowledgebases": ("STRING", {"multiline": True}),  # Ensure multiline input is handled
             },
         }
 
@@ -120,37 +89,15 @@ class KnowledgeBaseNode:
     FUNCTION = "select"
     CATEGORY = "Knowledge Base"
 
-    def __init__(self, knowledge_bases=None):
-        # Initialize with the knowledge bases provided dynamically or default to empty
-        self.knowledge_bases = knowledge_bases if knowledge_bases else []
-
     def select(self, knowledgebases):
-        # This method handles the processing of the selected knowledge bases
+        # Split the knowledgebases string by newline, ensuring all are handled as a list
+        knowledge_base_list = knowledgebases.split('\n')  # Split the multiline string into a list
+
         payload = {
-            "knowledgebases": knowledgebases  # Payload to send the selected bases to the backend or workflow
+            "knowledgebases": knowledge_base_list  # Ensure the payload has the list of knowledge base names
         }
-
-        try:
-            # Call the backend API to process the knowledge bases asynchronously
-            response = asyncio.run(api.call_api("KnowledgeBaseNode", payload))
-            logging.info(f"API response for KnowledgeBaseNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
-        # Return the selected knowledge base for use in the workflow
-        return ({"knowledgebases": knowledgebases},)
-
-    @classmethod
-    def update_knowledge_bases(cls, knowledge_bases):
-        # Dynamically update INPUT_TYPES to handle all received knowledge bases
-        inputs = {
-            "required": {
-                f"knowledgebase_{idx+1}": ("STRING", {"default": kb, "multiline": False})
-                for idx, kb in enumerate(knowledge_bases)
-            }
-        }
-        cls.INPUT_TYPES = lambda: inputs  # Update the class input types dynamically
+        # Return the list of knowledge bases
+        return (payload,)
 
 class MemoryNode:
     @classmethod
@@ -171,20 +118,6 @@ class MemoryNode:
     CATEGORY = "Memory"
 
     def generate_config(self, collection_name, host="", port=8000, persist_path=""):
-        payload = {
-            "collection_name": collection_name,
-            "host": host,
-            "port": port,
-            "persist_path": persist_path
-        }
-
-        try:
-            response = asyncio.run(api.call_api("MemoryNode", payload))
-            logging.info(f"API response for MemoryNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
         config = {
             "collection_name": collection_name,
             "host": host,
@@ -216,17 +149,8 @@ class ToolsNode:
 
     def output_tools(self, **tool_states):
         selected_tools = [tool for tool, state in tool_states.items() if state]
-
         payload = {"selected_tools": selected_tools}
-
-        try:
-            response = asyncio.run(api.call_api("ToolsNode", payload))
-            logging.info(f"API response for ToolsNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
-        return (selected_tools,)
+        return (payload,)
 
 
 class TaskPlannerNode:
@@ -234,11 +158,13 @@ class TaskPlannerNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "llm_config": ("LLM",),
-                "knowledge_base": ("KNOWLEDGE_BASE",),
+                "llm": ("LLM",),
                 "tools": ("TOOL", {"multiple": True}),
                 "auto_assign": ("BOOLEAN", {"default": False}),
                 "memory": ("MEMORY",)
+            },
+            "optional": {
+                "knowledge_base": ("KNOWLEDGE_BASE",)  
             }
         }
 
@@ -246,60 +172,27 @@ class TaskPlannerNode:
     FUNCTION = "plan_tasks"
     CATEGORY = "Task Planning"
 
-    def plan_tasks(self, llm_config, knowledge_base, tools, auto_assign, memory):
+    def plan_tasks(self, llm, tools, auto_assign, memory, knowledge_base=None):
         if not isinstance(tools, (list, tuple)):
             tools = [tools]
 
+        # Prepare payload; include knowledge_base only if provided
         payload = {
-            "llm_config": llm_config,
-            "knowledge_base": knowledge_base,
+            "llm": llm,
             "tools": tools,
             "auto_assign": auto_assign,
-            "memory": memory
+            "memory": memory,
         }
+        
+        if knowledge_base:
+            payload["knowledge_base"] = knowledge_base
 
-        try:
-            response = asyncio.run(api.call_api("TaskPlannerNode", payload))
-            logging.info(f"API response for TaskPlannerNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
+        # Generate the task plan, passing the knowledge_base only if it's provided
+        payload["auto_assign"] = auto_assign 
 
-        task_plan = self.generate_task_plan(llm_config, knowledge_base, tools)
+        return (payload,)
 
-        task_plan["auto_assigned"] = auto_assign
 
-        return (task_plan,)
-
-    def generate_task_plan(self, llm_config, knowledge_base, tools):
-        task_plan = {
-            "llm_config": llm_config,
-            "knowledge_base": knowledge_base,
-            "planned_tasks": [
-                {
-                    "id": 0,
-                    "description": "Analyze the objective",
-                    "dependencies": [],
-                    "required_actions": tools[:2]
-                },
-                {
-                    "id": 1,
-                    "description": "Research using knowledge base",
-                    "dependencies": [0],
-                    "required_actions": tools[2:4]
-                },
-                {
-                    "id": 2,
-                    "description": "Formulate response",
-                    "dependencies": [1],
-                    "required_actions": tools[4:]
-                }
-            ],
-            "current_task": 0,
-            "completed_tasks": {}
-        }
-
-        return task_plan
 
 class WorkerNode:
     TOOL_NAMES = [
@@ -314,7 +207,7 @@ class WorkerNode:
             "required": {
                 "task_plan": ("TASK_PLAN",),
                 "worker_role": ("STRING", {"default": "Worker Role"}),  # Worker role comes first
-                "llm_config": ("LLM",),
+                "llm": ("LLM",),
                 **{tool: ("BOOLEAN", {"default": False}) for tool in cls.TOOL_NAMES}
             },
             "optional": {
@@ -326,7 +219,7 @@ class WorkerNode:
     FUNCTION = "execute_task"
     CATEGORY = "Worker"
 
-    def execute_task(self, task_plan, worker_role, llm_config, previous_output=None, **tools):
+    def execute_task(self, task_plan, worker_role, llm, previous_output=None, **tools):
         # Extract the tool states
         selected_tools = [tool for tool, state in tools.items() if state]
         
@@ -334,19 +227,10 @@ class WorkerNode:
         payload = {
             "task_plan": task_plan,
             "worker_role": worker_role,  # Display worker role instead of worker id
-            "llm_config": llm_config,
+            "llm": llm,
             "selected_tools": selected_tools,
             "previous_output": previous_output
         }
-
-        try:
-            # Call the API using asyncio
-            response = asyncio.run(api.call_api("WorkerNode", payload))
-            logging.info(f"API response for WorkerNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
         # Prepare the task result with worker role
         task_result = {
             "worker_role": worker_role,  # Show worker role at the top
@@ -354,7 +238,7 @@ class WorkerNode:
         }
 
         # Return the task result
-        return (task_result,)
+        return (payload,)
 
 class OutputNode:
     @classmethod
@@ -373,14 +257,7 @@ class OutputNode:
     def process_output(self, input):
         payload = {"input": input}
 
-        try:
-            response = asyncio.run(api.call_api("OutputNode", payload))
-            logging.info(f"API response for OutputNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
-        return (input,)
+        return (payload,)
 
 
 # ComfyUI node registration
