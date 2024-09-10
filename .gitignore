@@ -13,6 +13,7 @@ extra_model_paths.yaml
 .idea/
 venv/
 env/
+myenv/
 .env
 /web/extensions/*
 !/web/extensions/logging.js.example
