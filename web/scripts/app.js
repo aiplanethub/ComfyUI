@@ -2066,6 +2066,7 @@ export class ComfyApp {
   
     let reset_invalid_values = false;
     if (!graphData) {
+      graphData = defaultGraph;
       // Check for stored_workflow before falling back to defaultGraph
       // if (localStorage.getItem("stored_workflow")) {
       //   graphData = JSON.parse(localStorage.getItem("stored_workflow"));
@@ -2093,6 +2094,7 @@ export class ComfyApp {
       graphData,
       missingNodeTypes
     );
+
     for (let n of graphData.nodes) {
       // Patch T2IAdapterLoader to ControlNetLoader since they are the same node now
       if (n.type == "T2IAdapterLoader") n.type = "ControlNetLoader";
