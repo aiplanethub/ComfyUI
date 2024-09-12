@@ -69,9 +69,9 @@ class LLMNode:
     FUNCTION = "select"
     CATEGORY = "LLM"
 
-    def select(self, input, llm_config_name):
+    def select(self, input, llm_name):
         # Use the llm_config_name directly from the widget values
-        payload = {"provider": llm_config_name}
+        payload = {"provider": llm_name}
         # Return the LLM configuration
         return (payload,)
     
