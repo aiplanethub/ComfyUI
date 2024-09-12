@@ -2377,7 +2377,7 @@ export class ComfyApp {
 
     this.#processingQueue = true;
     this.lastNodeErrors = null;
-    console.log("Queue items: ", this.#queueItems);
+    // console.log("Queue items: ", this.#queueItems);
     try {
       while (this.#queueItems.length) {
         ({ number, batchCount } = this.#queueItems.pop());
@@ -2407,6 +2407,8 @@ export class ComfyApp {
               this.lastNodeErrors = error.response.node_errors;
               this.canvas.draw(true, true);
             }
+            throw error;
+
             break;
           }
 
