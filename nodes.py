@@ -1,25 +1,12 @@
-import asyncio
-import requests
-import torch
 import os
 import sys
-import json
-import hashlib
 import traceback
-import math
 import time
-import random
 import logging
 
-from PIL import Image, ImageOps, ImageSequence, ImageFile
-from PIL.PngImagePlugin import PngInfo
-
-import numpy as np
-import safetensors.torch
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy"))
 
-from api import api
 import comfy.diffusers_load
 import comfy.samplers
 import comfy.sample
@@ -35,8 +22,6 @@ from comfy.cli_args import args
 import importlib
 
 import folder_paths
-import latent_preview
-import node_helpers
 
 def before_node_execution():
     comfy.model_management.throw_exception_if_processing_interrupted()
@@ -45,9 +30,7 @@ def interrupt_processing(value=True):
     comfy.model_management.interrupt_current_processing(value)
 
 MAX_RESOLUTION=16384
-import asyncio
 import logging
-from api import api
 
 class InputNode:
     @classmethod
@@ -68,24 +51,17 @@ class InputNode:
             "instruction": instruction,
             "name": name
         }
-
-        try:
-            response = asyncio.run(api.call_api("InputNode", payload))
-            logging.info(f"API response for InputNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-        
-        return ({"instruction": instruction, "name": name},)
+        return (payload,)
 
 
 class LLMNode:
+    LLM_PROVIDERS = ['openai', 'azure', 'groq', 'cohere', 'gemini'] 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "input": ("INPUT",),
-                "llm_config_name": ("STRING", {"multiline": False}),
+                "llm_name": (cls.LLM_PROVIDERS,),
             },
         }
 
@@ -95,17 +71,9 @@ class LLMNode:
 
     def select(self, input, llm_config_name):
         # Use the llm_config_name directly from the widget values
-        payload = {"input": input, "llm_config_name": llm_config_name}
-
-        try:
-            response = asyncio.run(api.call_api("LLMNode", payload))
-            logging.info(f"API response for LLMNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
+        payload = {"provider": llm_config_name}
         # Return the LLM configuration
-        return ({"provider": llm_config_name},)
+        return (payload,)
     
 class KnowledgeBaseNode:
     @classmethod
@@ -127,17 +95,8 @@ class KnowledgeBaseNode:
         payload = {
             "knowledgebases": knowledge_base_list  # Ensure the payload has the list of knowledge base names
         }
-
-        try:
-            # Send all knowledge bases to the backend API
-            response = asyncio.run(api.call_api("KnowledgeBaseNode", payload))
-            logging.info(f"API response for KnowledgeBaseNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
         # Return the list of knowledge bases
-        return ({"knowledgebases": knowledge_base_list},)
+        return (payload,)
 
 class MemoryNode:
     @classmethod
@@ -164,31 +123,16 @@ class MemoryNode:
             "port": port,
             "persist_path": persist_path
         }
-
-        try:
-            response = asyncio.run(api.call_api("MemoryNode", payload))
-            logging.info(f"API response for MemoryNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
-        config = {
-            "collection_name": collection_name,
-            "host": host,
-            "port": port,
-            "persist_path": persist_path
-        }
-
-        return (config,)
+        return (payload,)
 
 
 class ToolsNode:
     TOOL_NAMES = [
-        "DocumentLoader", "GitHubSearchTool", "SerpSearch",
-        "SerperSearch", "TavilyQASearch", "UnstructuredIO",
-        "WebLoader", "YouTubeSearch", "DuckDuckGoNewsSearch", "WebBaseContextTool"
-    ]
-
+                "DocumentLoader", "GitHubSearchTool", "SerpSearch", 
+                "SerperSearch", "TavilyQASearch", "UnstructuredIO", "SummarizerAction", "FormatterAction", 
+                "ReadFileAction", "WriteFileAction", "CreateFileAction",
+                "WebLoader", "YouTubeSearchTool", "WebBaseContextTool", "DuckDuckGoNewsSearch"
+            ]
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -203,16 +147,6 @@ class ToolsNode:
 
     def output_tools(self, **tool_states):
         selected_tools = [tool for tool, state in tool_states.items() if state]
-
-        payload = {"selected_tools": selected_tools}
-
-        try:
-            response = asyncio.run(api.call_api("ToolsNode", payload))
-            logging.info(f"API response for ToolsNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
         return (selected_tools,)
 
 
@@ -227,7 +161,7 @@ class TaskPlannerNode:
                 "memory": ("MEMORY",)
             },
             "optional": {
-                "knowledge_base": ("KNOWLEDGE_BASE",)  
+                "knowledge_base": ("KNOWLEDGE_BASE",)
             }
         }
 
@@ -239,72 +173,30 @@ class TaskPlannerNode:
         if not isinstance(tools, (list, tuple)):
             tools = [tools]
 
-        # Prepare payload; include knowledge_base only if provided
-        payload = {
-            "llm_config": llm_config,
-            "tools": tools,
-            "auto_assign": auto_assign,
-            "memory": memory,
-        }
-        
-        if knowledge_base:
-            payload["knowledge_base"] = knowledge_base
-
-        try:
-            response = asyncio.run(api.call_api("TaskPlannerNode", payload))
-            logging.info(f"API response for TaskPlannerNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
-        # Generate the task plan, passing the knowledge_base only if it's provided
-        task_plan = self.generate_task_plan(llm_config, tools, knowledge_base)
-
-        task_plan["auto_assigned"] = auto_assign
-
-        return (task_plan,)
-
-    def generate_task_plan(self, llm_config, tools, knowledge_base=None):
+        # Prepare the task plan; include knowledge_base only if provided
         task_plan = {
             "llm_config": llm_config,
-            "planned_tasks": [
-                {
-                    "id": 0,
-                    "description": "Analyze the objective",
-                    "dependencies": [],
-                    "required_actions": tools[:2]
-                },
-                {
-                    "id": 1,
-                    "description": "Research using tools",
-                    "dependencies": [0],
-                    "required_actions": tools[2:4]
-                },
-                {
-                    "id": 2,
-                    "description": "Formulate response",
-                    "dependencies": [1],
-                    "required_actions": tools[4:]
-                }
-            ],
+            "memory": memory,
             "current_task": 0,
-            "completed_tasks": {}
+            "completed_tasks": {},
+            "auto_assigned": auto_assign
         }
 
         # Add knowledge_base only if provided
         if knowledge_base:
             task_plan["knowledge_base"] = knowledge_base
 
-        return task_plan
+        return (task_plan,)
+
 
 
 class WorkerNode:
     TOOL_NAMES = [
-        "DocumentLoader", "GitHubSearchTool", "SerpSearch",
-        "SerperSearch", "TavilyQASearch", "UnstructuredIO",
-        "WebLoader", "YouTubeSearch", "WebBaseContextTool", "DuckDuckGoNewsSearch"
-    ]
-
+                "DocumentLoader", "GitHubSearchTool", "SerpSearch", 
+                "SerperSearch", "TavilyQASearch", "UnstructuredIO", "SummarizerAction", "FormatterAction", 
+                "ReadFileAction", "WriteFileAction", "CreateFileAction",
+                "WebLoader", "YouTubeSearchTool", "WebBaseContextTool", "DuckDuckGoNewsSearch"
+            ]
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -330,23 +222,13 @@ class WorkerNode:
         # Create the payload for the API call
         payload = {
             "task_plan": task_plan,
-            "worker_role": worker_role,  # Display worker role instead of worker id
+            "worker_role": worker_role,  
             "llm_config": llm_config,
             "selected_tools": selected_tools,
             "previous_output": previous_output
         }
-
-        try:
-            # Call the API using asyncio
-            response = asyncio.run(api.call_api("WorkerNode", payload))
-            logging.info(f"API response for WorkerNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
-        # Prepare the task result with worker role
         task_result = {
-            "worker_role": worker_role,  # Show worker role at the top
+            "worker_role": worker_role,  
             "tools": {tool: tools.get(tool, False) for tool in self.TOOL_NAMES}
         }
 
@@ -369,15 +251,7 @@ class OutputNode:
 
     def process_output(self, input):
         payload = {"input": input}
-
-        try:
-            response = asyncio.run(api.call_api("OutputNode", payload))
-            logging.info(f"API response for OutputNode: {response}")
-        except Exception as e:
-            logging.error(f"An error occurred: {e}")
-            return (None,)
-
-        return (input,)
+        return (payload,)
 
 
 # ComfyUI node registration
