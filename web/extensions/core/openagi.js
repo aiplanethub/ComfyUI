@@ -9,6 +9,7 @@ const ext = {
 			
 
 			if (parsedEventData.event === "loadWorkflow") {
+				// try{}catch(e)
         await app.loadGraphData(parsedEventData.data);
       } else if (parsedEventData.event === "getWorkflow") {
         const graphData = await app.graphToPrompt();
@@ -22,7 +23,9 @@ const ext = {
         );
       } else if (parsedEventData.event === "queuePrompt") {
         try {
-          const result = await app.queuePrompt(0, app.batchCount);
+          const application_id=parsedEventData.application_id;
+          const access_token=parsedEventData.accessToken;
+          const result = await app.queuePrompt(0, app.batchCount, application_id,access_token);
 
           // If it reaches here, that means the queuePrompt finished without throwing an error
           event.source.postMessage(
