@@ -3,18 +3,10 @@ import sys
 import traceback
 import time
 import logging
-
+import folder_paths
+import hashlib
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy"))
-
-import comfy.diffusers_load
-import comfy.samplers
-import comfy.sample
-import comfy.sd
-import comfy.utils
-import comfy.controlnet
-
-import comfy.clip_vision
 
 import comfy.model_management
 from comfy.cli_args import args
@@ -202,7 +194,8 @@ class WorkerNode:
         return {
             "required": {
                 "task_plan": ("TASK_PLAN",),
-                "worker_role": ("STRING", {"default": "Worker Role"}),  # Worker role comes first
+                "worker_role": ("STRING", {"default": "Worker Role"}),  
+                "worker_instruction" : ("STRING", {"default": "Worker Instruction"}),  
                 "llm_config": ("LLM",),
                 **{tool: ("BOOLEAN", {"default": False}) for tool in cls.TOOL_NAMES}
             },
@@ -215,7 +208,7 @@ class WorkerNode:
     FUNCTION = "execute_task"
     CATEGORY = "Worker"
 
-    def execute_task(self, task_plan, worker_role, llm_config, previous_output=None, **tools):
+    def execute_task(self, task_plan, worker_role, worker_instruction, llm_config, previous_output=None, **tools):
         # Extract the tool states
         selected_tools = [tool for tool, state in tools.items() if state]
         
@@ -223,6 +216,7 @@ class WorkerNode:
         payload = {
             "task_plan": task_plan,
             "worker_role": worker_role,  
+            "worker_instruction": worker_instruction,
             "llm_config": llm_config,
             "selected_tools": selected_tools,
             "previous_output": previous_output
@@ -236,23 +230,113 @@ class WorkerNode:
         return (task_result,)
 
 class OutputNode:
+    SUPPORTED_FORMATS = None  # Set to None to allow all file formats
+
     @classmethod
     def INPUT_TYPES(cls):
+        # You can use any folder, like Downloads or Desktop, based on OS-specific paths.
+        input_dir = "C:/Users/sucha/Downloads/"  # Customize this to your desired folder path
+        input_dir1 = folder_paths.get_input_directory() 
+        logging.info(input_dir1)
+
+        # Check if directory exists and list the files
+        if not os.path.exists(input_dir):
+            return {"required": {"input": ("WORKER_OUTPUT",)}, "optional": {"files": ("No valid files found", {})}}
+
+        files = [
+            f for f in os.listdir(input_dir)
+            if os.path.isfile(os.path.join(input_dir, f))  # Remove format check to allow all files
+        ]
+
+        if not files:
+            files.append("No valid files found")  # Handle case where no files are found
+
         return {
             "required": {
-                "input": ("WORKER_OUTPUT",),
+                "input": ("WORKER_OUTPUT",),  # Keep Worker Output as the main input
             },
+            "optional": {
+                # Add a dropdown for file selection with enlarged width allocation (longer display for filenames)
+                "files": (sorted(files), {"default": "Select a file"})  # Adjust width with widget_width
+            }
         }
+
+    CATEGORY = "Output"
 
     RETURN_TYPES = ("OUTPUT",)
     FUNCTION = "process_output"
     OUTPUT_NODE = True
-    CATEGORY = "Output"
 
-    def process_output(self, input):
-        payload = {"input": input}
+    def process_output(self, input, files):
+        """
+        Process the WORKER_OUTPUT and handle the selected file.
+        """
+        # Ensure a file is selected
+        if files == "Select a file" or files == "No valid files found":
+            return ({"status": "error", "message": "No valid file selected."},)
+
+        # input_dir = folder_paths.get_input_directory()  # Use the dynamically fetched directory
+        # file_path = os.path.join(input_dir, files)  # Customize this to your desired folder path
+        
+        # Get the full file path from the selected file
+        file_path = os.path.join("C:/Users/sucha/Downloads/", files)  # Customize this to your desired folder path
+
+        # Since we are allowing all file types, no format validation is needed
+        if not os.path.isfile(file_path):
+            return ({"status": "error", "message": "File not found."},)
+
+        # Prepare the file information payload
+        file_info = {
+            "file_name": os.path.basename(file_path),
+            "file_path": file_path,
+            "message": "File processed successfully."
+        }
+        logging.info(file_info)
+        # Combine the file information and input (Worker Output)
+        payload = {
+            "input": input,
+            "file_info": file_info
+        }
+
         return (payload,)
 
+    def is_valid_file(self, file_path):
+        """
+        Check if the selected file is valid.
+        Since we're allowing all formats, we just check if the file exists.
+        """
+        return os.path.isfile(file_path)
+
+    @classmethod
+    def IS_CHANGED(cls, files):
+        """
+        Detects if the selected file has changed by calculating its hash.
+        """
+        if not files or files == "Select a file":
+            return ""
+        
+        # input_dir = folder_paths.get_input_directory()  # Use the dynamically fetched directory
+        # file_path = os.path.join(input_dir, files)  # Customize this to your desired folder path
+
+        file_path = os.path.join("C:/Users/sucha/Downloads/", files)  # Customize this to your desired folder path
+        m = hashlib.sha256()
+        with open(file_path, 'rb') as f:
+            m.update(f.read())
+        return m.digest().hex()
+
+    @classmethod
+    def VALIDATE_INPUTS(cls, files):
+        """
+        Validates the input to ensure the file exists.
+        """
+        # input_dir = folder_paths.get_input_directory()  # Use the dynamically fetched directory
+        # file_path = os.path.join(input_dir, files)  # Customize this to your desired folder path
+
+        file_path = os.path.join("C:/Users/sucha/Downloads/", files)  # Customize this to your desired folder path
+        if not os.path.isfile(file_path):
+            return "Invalid file path: {}".format(files)
+        return True
+    
 
 # ComfyUI node registration
 NODE_CLASS_MAPPINGS = {
@@ -389,47 +473,7 @@ def init_builtin_extra_nodes():
         None
     """
     extras_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy_extras")
-    extras_files = [
-        "nodes_latent.py",
-        "nodes_hypernetwork.py",
-        "nodes_upscale_model.py",
-        "nodes_post_processing.py",
-        "nodes_mask.py",
-        "nodes_compositing.py",
-        "nodes_rebatch.py",
-        "nodes_model_merging.py",
-        "nodes_tomesd.py",
-        "nodes_clip_sdxl.py",
-        "nodes_canny.py",
-        "nodes_freelunch.py",
-        "nodes_custom_sampler.py",
-        "nodes_hypertile.py",
-        "nodes_model_advanced.py",
-        "nodes_model_downscale.py",
-        "nodes_images.py",
-        "nodes_video_model.py",
-        "nodes_sag.py",
-        "nodes_perpneg.py",
-        "nodes_stable3d.py",
-        "nodes_sdupscale.py",
-        "nodes_photomaker.py",
-        "nodes_cond.py",
-        "nodes_morphology.py",
-        "nodes_stable_cascade.py",
-        "nodes_differential_diffusion.py",
-        "nodes_ip2p.py",
-        "nodes_model_merging_model_specific.py",
-        "nodes_pag.py",
-        "nodes_align_your_steps.py",
-        "nodes_attention_multiply.py",
-        "nodes_advanced_samplers.py",
-        "nodes_webcam.py",
-        "nodes_audio.py",
-        "nodes_sd3.py",
-        "nodes_gits.py",
-        "nodes_controlnet.py",
-        "nodes_hunyuan.py",
-    ]
+    extras_files = []
 
     import_failed = []
     for node_file in extras_files:

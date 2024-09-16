@@ -733,12 +733,12 @@ export class ComfyUI {
               console.log("Fetched graph data:", p);
 
               // Load the graph data
-              await app.loadGraphData(p.workflow);
+              await app.loadGraphData(p);
 
               // Save the loaded workflow to localStorage
               localStorage.setItem(
                 "stored_workflow",
-                JSON.stringify(p.workflow)
+                JSON.stringify(p)
               );
               alert("Workflow loaded and saved successfully.");
             } catch (error) {
