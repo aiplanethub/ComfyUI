@@ -4,12 +4,18 @@ const ext = {
 	name: "Comfy.OpenAGI",
 
 	async setup(){
-		const handleWorkflowEvents = async function (event) {
-			const parsedEventData = JSON.parse(event.data)
-			
 
-			if (parsedEventData.event === "loadWorkflow") {
-				// try{}catch(e)
+    window.parent.postMessage(
+      JSON.stringify({
+        event: "iframeLoaded", // Indicate that the iframe (ComfyUI) has been initialized
+      }),
+      "*" // Use "*" to allow communication regardless of origin
+    );
+
+    const handleWorkflowEvents = async function (event) {
+      const parsedEventData = JSON.parse(event.data);
+
+      if (parsedEventData.event === "loadWorkflow") {
         await app.loadGraphData(parsedEventData.data);
       } else if (parsedEventData.event === "getWorkflow") {
         const graphData = await app.graphToPrompt();
@@ -23,9 +29,14 @@ const ext = {
         );
       } else if (parsedEventData.event === "queuePrompt") {
         try {
-          const application_id=parsedEventData.application_id;
-          const access_token=parsedEventData.accessToken;
-          const result = await app.queuePrompt(0, app.batchCount, application_id,access_token);
+          const application_id = parsedEventData.application_id;
+          const access_token = parsedEventData.accessToken;
+          const result = await app.queuePrompt(
+            0,
+            app.batchCount,
+            application_id,
+            access_token
+          );
 
           // If it reaches here, that means the queuePrompt finished without throwing an error
           event.source.postMessage(
@@ -48,8 +59,8 @@ const ext = {
             event.origin
           );
         }
-      }			
-		}
+      }
+    };
 		window.addEventListener("message", handleWorkflowEvents);
 	}
 };

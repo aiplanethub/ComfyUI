@@ -21,3 +21,4 @@ env/
 /user/
 *.log
 web_custom_versions/
+myenv/
