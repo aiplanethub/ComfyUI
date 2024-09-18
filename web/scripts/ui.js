@@ -797,9 +797,9 @@ export class ComfyUI {
             // Fetch and load the graph data using the access token and application ID
             try {
               const response = await fetch(
-                `${window.env.APPLICATION_API_BASE_URL}${application_id}/get-template`,
+                `${window.env.APPLICATION_API_BASE_URL}${application_id}/template`,
                 {
-                  method: "GET",
+                  method: "POST",
                   headers: {
                     Authorization: `Bearer ${accessToken}`,
                   },
