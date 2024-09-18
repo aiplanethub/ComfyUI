@@ -628,13 +628,14 @@ export class ComfyUI {
           const workflowData = await app
             .graphToPrompt()
             .then((p) => p.workflow);
-          console.log(workflowData)
+          console.log(workflowData);
+
           // Send the workflow data to the API
           try {
             const response = await fetch(
               `${window.env.APPLICATION_API_BASE_URL}${application_id}/save-template`,
               {
-                method: "POST", // Assuming the API endpoint uses POST for saving
+                method: "PUT", // Assuming the API endpoint uses PUT for saving
                 headers: {
                   Authorization: `Bearer ${accessToken}`,
                   "Content-Type": "application/json",
@@ -645,13 +646,18 @@ export class ComfyUI {
 
             // Check if the request was successful
             if (!response.ok) {
-              throw new Error("Failed to save the workflow to the API.");
+              const errorData = await response.json(); // Extract the error message
+              throw new Error(
+                errorData.detail || "Failed to save the workflow."
+              );
             }
 
-            alert("Workflow saved successfully to the API!");
+            // Get the success message from the response
+            const result = await response.json();
+            alert(result.msg || "Workflow saved successfully to the API!");
           } catch (error) {
             console.error("Error saving workflow:", error);
-            alert("Failed to save the workflow to the API.");
+            alert(error.message || "Failed to save the workflow to the API.");
           }
         },
       }),
@@ -791,9 +797,9 @@ export class ComfyUI {
             // Fetch and load the graph data using the access token and application ID
             try {
               const response = await fetch(
-                `${window.env.APPLICATION_API_BASE_URL}${application_id}/create-template`,
+                `${window.env.APPLICATION_API_BASE_URL}${application_id}/get-template`,
                 {
-                  method: "PATCH",
+                  method: "GET",
                   headers: {
                     Authorization: `Bearer ${accessToken}`,
                   },
