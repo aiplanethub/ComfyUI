@@ -71,7 +71,7 @@ class KnowledgeBaseNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "knowledgebases": ("STRING", {"multiline": True}),  # Ensure multiline input is handled
+                "knowledgebases": ("STRING", {"multiline": True}), 
             },
         }
 
