@@ -69,6 +69,7 @@ export class ComfyApp {
     this.bodyBottom = $el("div.comfyui-body-bottom", { parent: document.body });
     this.menu = new ComfyAppMenu(this);
 
+
     /**
      * List of extensions that are registered with the app
      * @type {ComfyExtension[]}
@@ -1707,7 +1708,7 @@ export class ComfyApp {
    */
   async setup() {
     await this.#setUser();
-  
+
     // Create and mount the LiteGraph in the DOM
     const mainCanvas = document.createElement("canvas");
     mainCanvas.style.touchAction = "none";
@@ -1717,32 +1718,32 @@ export class ComfyApp {
     canvasEl.tabIndex = "1";
     document.body.append(canvasEl);
     this.resizeCanvas();
-  
+
     await Promise.all([
       this.workflowManager.loadWorkflows(),
       this.ui.settings.load(),
     ]);
     await this.#loadExtensions();
-  
+
     addDomClippingSetting();
     this.#addProcessMouseHandler();
     this.#addProcessKeyHandler();
     this.#addConfigureHandler();
     this.#addApiUpdateHandlers();
     this.#addRestoreWorkflowView();
-  
+
     this.graph = new LGraph();
-  
+
     this.#addAfterConfigureHandler();
-  
+
     this.canvas = new LGraphCanvas(canvasEl, this.graph);
     this.ctx = canvasEl.getContext("2d");
-  
+
     LiteGraph.release_link_on_empty_shows_menu = true;
     LiteGraph.alt_drag_do_clone_nodes = true;
-  
+
     this.graph.start();
-  
+
     this.resizeCanvas();
     window.addEventListener("resize", () => this.resizeCanvas());
     const ro = new ResizeObserver(() => this.resizeCanvas());
@@ -1750,11 +1751,11 @@ export class ComfyApp {
     ro.observe(this.bodyLeft);
     ro.observe(this.bodyRight);
     ro.observe(this.bodyBottom);
-  
+
     await this.#invokeExtensionsAsync("init");
     await this.registerNodes();
     initWidgets(this);
-  
+
     let restored = false;
     try {
       const loadWorkflow = async (json) => {
@@ -1765,16 +1766,18 @@ export class ComfyApp {
           return true;
         }
       };
-  
+
       const clientId = api.initialClientId ?? api.clientId;
       restored =
         (clientId &&
-          (await loadWorkflow(sessionStorage.getItem(`workflow:${clientId}`)))) ||
+          (await loadWorkflow(
+            sessionStorage.getItem(`workflow:${clientId}`)
+          ))) ||
         (await loadWorkflow(localStorage.getItem("workflow")));
     } catch (err) {
       console.error("Error loading previous workflow", err);
     }
-  
+
     if (!restored && localStorage.getItem("stored_workflow")) {
       await this.loadGraphData(
         JSON.parse(localStorage.getItem("stored_workflow")),
@@ -1782,11 +1785,11 @@ export class ComfyApp {
         true
       );
     }
-  
+
     if (!restored) {
       await this.loadGraphData();
     }
-  
+
     // setInterval(() => {
     //   const workflow = JSON.stringify(this.graph.serialize());
     //   localStorage.setItem("workflow", workflow);
@@ -1794,17 +1797,16 @@ export class ComfyApp {
     //     sessionStorage.setItem(`workflow:${api.clientId}`, workflow);
     //   }
     // }, 1000);
-  
+
     this.#addDrawNodeHandler();
     this.#addDrawGroupsHandler();
     this.#addDropHandler();
     this.#addCopyHandler();
     this.#addPasteHandler();
     this.#addKeyboardHandler();
-  
+
     await this.#invokeExtensionsAsync("setup");
   }
-  
 
   resizeCanvas() {
     // Limit minimal scale to 1, see https://github.com/comfyanonymous/ComfyUI/pull/845
@@ -2063,7 +2065,7 @@ export class ComfyApp {
     if (clean !== false) {
       this.clean();
     }
-  
+
     let reset_invalid_values = false;
     if (!graphData) {
       graphData = defaultGraph;
@@ -2075,19 +2077,19 @@ export class ComfyApp {
       // }
       reset_invalid_values = true;
     }
-  
+
     if (typeof structuredClone === "undefined") {
       graphData = JSON.parse(JSON.stringify(graphData));
     } else {
       graphData = structuredClone(graphData);
     }
-  
+
     try {
       this.workflowManager.setWorkflow(workflow);
     } catch (error) {
-      console.error(error);
+      throw error;
     }
-  
+
     const missingNodeTypes = [];
     await this.#invokeExtensionsAsync(
       "beforeConfigureGraph",
@@ -2101,14 +2103,14 @@ export class ComfyApp {
       if (n.type == "ConditioningAverage ") n.type = "ConditioningAverage"; //typo fix
       if (n.type == "SDV_img2vid_Conditioning")
         n.type = "SVD_img2vid_Conditioning"; //typo fix
-  
+
       // Find missing node types
       if (!(n.type in LiteGraph.registered_node_types)) {
         missingNodeTypes.push(n.type);
         n.type = sanitizeNodeName(n.type);
       }
     }
-  
+
     try {
       this.graph.configure(graphData);
       if (
@@ -2119,10 +2121,12 @@ export class ComfyApp {
         this.canvas.ds.offset = graphData.extra.ds.offset;
         this.canvas.ds.scale = graphData.extra.ds.scale;
       }
-  
+
       try {
         this.workflowManager.activeWorkflow?.track();
-      } catch (error) {}
+      } catch (error) {
+        throw error;
+      }
     } catch (error) {
       this.ui.dialog.show(
         $el("div", [
@@ -2146,16 +2150,18 @@ export class ComfyApp {
           }),
         ]).outerHTML
       );
-  
+
+      throw error;
+
       return;
     }
-  
+
     for (const node of this.graph._nodes) {
       const size = node.computeSize();
       size[0] = Math.max(node.size[0], size[0]);
       size[1] = Math.max(node.size[1], size[1]);
       node.size = size;
-  
+
       if (node.widgets) {
         for (let widget of node.widgets) {
           if (reset_invalid_values) {
@@ -2170,10 +2176,10 @@ export class ComfyApp {
           }
         }
       }
-  
+
       this.#invokeExtensions("loadedGraphNode", node);
     }
-  
+
     if (missingNodeTypes.length) {
       this.showMissingNodesError(missingNodeTypes);
     }
@@ -2182,7 +2188,6 @@ export class ComfyApp {
       this.graph.setDirtyCanvas(true, true);
     });
   }
-  
 
   /**
    * Converts the current graph workflow for sending to the API
@@ -2368,7 +2373,7 @@ export class ComfyApp {
 
     return `Error occurred when executing ${nodeType}:\n\n${error.exception_message}\n\n${traceback}`;
   }
-  async queuePrompt(number, batchCount = 1, application_id) {
+  async queuePrompt(number, batchCount = 1, application_id,access_token) {
     this.#queueItems.push({ number, batchCount });
 
     if (this.#processingQueue) {
@@ -2377,7 +2382,7 @@ export class ComfyApp {
 
     this.#processingQueue = true;
     this.lastNodeErrors = null;
-    console.log("Queue items: ", this.#queueItems);
+    // console.log("Queue items: ", this.#queueItems);
     try {
       while (this.#queueItems.length) {
         ({ number, batchCount } = this.#queueItems.pop());
@@ -2386,7 +2391,12 @@ export class ComfyApp {
           const p = await this.graphToPrompt();
 
           try {
-            const res = await api.queuePrompt(number, p);
+            const res = await api.queuePrompt(
+              number,
+              p,
+              application_id,
+              access_token
+            );
             this.lastNodeErrors = res.node_errors;
             if (this.lastNodeErrors.length > 0) {
               this.canvas.draw(true, true);
@@ -2407,6 +2417,8 @@ export class ComfyApp {
               this.lastNodeErrors = error.response.node_errors;
               this.canvas.draw(true, true);
             }
+            throw error;
+
             break;
           }
 
@@ -2445,7 +2457,7 @@ export class ComfyApp {
       if (p === -1) return f;
       return f.substring(0, p);
     };
-  
+
     const fileName = removeExt(file.name);
     if (file.type === "image/png") {
       const pngInfo = await getPngMetadata(file);
@@ -2459,7 +2471,10 @@ export class ComfyApp {
       } else if (pngInfo?.prompt) {
         this.loadApiJson(JSON.parse(pngInfo.prompt), fileName);
       } else if (pngInfo?.stored_workflow) {
-        localStorage.setItem("stored_workflow", JSON.stringify(pngInfo.stored_workflow));
+        localStorage.setItem(
+          "stored_workflow",
+          JSON.stringify(pngInfo.stored_workflow)
+        );
         await this.loadGraphData(pngInfo.stored_workflow, true, true, fileName);
       } else {
         this.showErrorOnFileLoad(file);
@@ -2468,26 +2483,40 @@ export class ComfyApp {
       const pngInfo = await getWebpMetadata(file);
       const workflow = pngInfo?.workflow || pngInfo?.Workflow;
       const prompt = pngInfo?.prompt || pngInfo?.Prompt;
-  
+
       if (workflow) {
         this.loadGraphData(JSON.parse(workflow), true, true, fileName);
       } else if (prompt) {
         this.loadApiJson(JSON.parse(prompt), fileName);
       } else if (pngInfo?.stored_workflow) {
-        localStorage.setItem("stored_workflow", JSON.stringify(pngInfo.stored_workflow));
+        localStorage.setItem(
+          "stored_workflow",
+          JSON.stringify(pngInfo.stored_workflow)
+        );
         await this.loadGraphData(pngInfo.stored_workflow, true, true, fileName);
       } else {
         this.showErrorOnFileLoad(file);
       }
-    } else if (file.type === "application/json" || file.name?.endsWith(".json")) {
+    } else if (
+      file.type === "application/json" ||
+      file.name?.endsWith(".json")
+    ) {
       const reader = new FileReader();
       reader.onload = async () => {
         const jsonContent = JSON.parse(reader.result);
         if (jsonContent?.templates) {
           this.loadTemplateData(jsonContent);
         } else if (jsonContent?.stored_workflow) {
-          localStorage.setItem("stored_workflow", JSON.stringify(jsonContent.stored_workflow));
-          await this.loadGraphData(jsonContent.stored_workflow, true, true, fileName);
+          localStorage.setItem(
+            "stored_workflow",
+            JSON.stringify(jsonContent.stored_workflow)
+          );
+          await this.loadGraphData(
+            jsonContent.stored_workflow,
+            true,
+            true,
+            fileName
+          );
         } else if (this.isApiJson(jsonContent)) {
           this.loadApiJson(jsonContent, fileName);
         } else {
@@ -2499,7 +2528,7 @@ export class ComfyApp {
       this.showErrorOnFileLoad(file);
     }
   }
-  
+
   isApiJson(data) {
     return Object.values(data).every((v) => v.class_type);
   }
@@ -2515,7 +2544,7 @@ export class ComfyApp {
       );
       return;
     }
-  
+
     const ids = Object.keys(apiData);
     app.graph.clear();
     for (const id of ids) {
@@ -2525,9 +2554,12 @@ export class ComfyApp {
       node.title = data._meta?.title ?? node.title;
       app.graph.add(node);
     }
-  
+
     if (apiData?.stored_workflow) {
-      localStorage.setItem("stored_workflow", JSON.stringify(apiData.stored_workflow));
+      localStorage.setItem(
+        "stored_workflow",
+        JSON.stringify(apiData.stored_workflow)
+      );
       this.loadGraphData(apiData.stored_workflow, true, true, fileName);
     } else {
       this.changeWorkflow(() => {
@@ -2563,7 +2595,7 @@ export class ComfyApp {
         app.graph.arrange();
       }, fileName);
     }
-  }  
+  }
 
   /**
    * Registers a Comfy web extension with the app
