@@ -20,5 +20,3 @@ python-dotenv
 kornia>=0.7.1
 spandrel
 soundfile
-httpx
-python-dotenv
