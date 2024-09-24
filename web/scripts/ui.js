@@ -338,6 +338,7 @@ export class ComfyUI {
       type: "boolean",
       defaultValue: true,
     });
+
     const promptFilename = this.settings.addSetting({
       id: "Comfy.PromptFilename",
       name: "Prompt for filename when saving workflow",
@@ -581,89 +582,6 @@ export class ComfyUI {
       this.queue.element,
       this.history.element,
       $el("button", {
-        id: "comfy-save-api-button",
-        textContent: "Save to API",
-        onclick: async () => {
-          // Get the application ID from the user
-          const application_id = prompt(
-            "Enter the application ID to save the workflow:"
-          );
-          if (!application_id) return alert("Application ID is required.");
-
-          // Set up credentials for authentication
-          const username = "abc@gmail.com";
-          const password = "abc";
-
-          // Fetch access token using username and password
-          let accessToken;
-          try {
-            const response = await fetch(
-              `${window.env.ACCESS_TOKEN_API_BASE_URL}/`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({
-                  username: username,
-                  password: password,
-                }),
-              }
-            );
-
-            if (!response.ok) throw new Error("Failed to authenticate.");
-
-            const data = await response.json();
-            accessToken = data.access_token;
-
-            // Store access token in local storage
-            localStorage.setItem("access_token", accessToken);
-          } catch (error) {
-            console.error("Error fetching access token:", error);
-            return alert("Failed to retrieve access token.");
-          }
-
-          // Retrieve the workflow data from the current UI
-          const workflowData = await app
-            .graphToPrompt()
-            .then((p) => p.workflow);
-          console.log(workflowData);
-
-          // Send the workflow data to the API
-          try {
-            const response = await fetch(
-              `${window.env.APPLICATION_API_BASE_URL}${application_id}/save-template`,
-              {
-                method: "PUT", // Assuming the API endpoint uses PUT for saving
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  workflow_data: workflowData, 
-                  autosave: false  
-                }),
-              }
-            );
-
-            // Check if the request was successful
-            if (!response.ok) {
-              const errorData = await response.json(); // Extract the error message
-              throw new Error(
-                errorData.detail || "Failed to save the workflow."
-              );
-            }
-
-            // Get the success message from the response
-            const result = await response.json();
-            alert(result.msg || "Workflow saved successfully to the API!");
-          } catch (error) {
-            console.error("Error saving workflow:", error);
-            alert(error.message || "Failed to save the workflow to the API.");
-          }
-        },
-      }),
-      $el("button", {
         id: "comfy-save-button",
         textContent: "Save",
         onclick: () => {
@@ -758,7 +676,7 @@ export class ComfyUI {
             app.resetView();
 
             // replace with your username and password here
-            const username = "abc@gmail.com";
+            const username = "abc@gmail.com"
             if (!username) return alert("Username is required.");
 
             const password = "abc";
@@ -799,9 +717,9 @@ export class ComfyUI {
             // Fetch and load the graph data using the access token and application ID
             try {
               const response = await fetch(
-                `${window.env.APPLICATION_API_BASE_URL}${application_id}/template`,
+                `${window.env.APPLICATION_API_BASE_URL}${application_id}/create-template`,
                 {
-                  method: "POST",
+                  method: "PATCH",
                   headers: {
                     Authorization: `Bearer ${accessToken}`,
                   },
@@ -815,10 +733,13 @@ export class ComfyUI {
               console.log("Fetched graph data:", p);
 
               // Load the graph data
-              await app.loadGraphData(p);
+              await app.loadGraphData(p.workflow);
 
               // Save the loaded workflow to localStorage
-              localStorage.setItem("stored_workflow", JSON.stringify(p));
+              localStorage.setItem(
+                "stored_workflow",
+                JSON.stringify(p.workflow)
+              );
               alert("Workflow loaded and saved successfully.");
             } catch (error) {
               console.error("Error loading the graph data:", error);
