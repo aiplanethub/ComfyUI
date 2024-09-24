@@ -1,21 +1,11 @@
-import asyncio
 import os
 import sys
 import traceback
 import time
 import logging
+import folder_paths
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy"))
-
-from api import api
-import comfy.diffusers_load
-import comfy.samplers
-import comfy.sample
-import comfy.sd
-import comfy.utils
-import comfy.controlnet
-
-import comfy.clip_vision
 
 import comfy.model_management
 from comfy.cli_args import args
@@ -31,6 +21,7 @@ def interrupt_processing(value=True):
     comfy.model_management.interrupt_current_processing(value)
 
 MAX_RESOLUTION=16384
+import logging
 
 class InputNode:
     @classmethod
@@ -51,17 +42,17 @@ class InputNode:
             "instruction": instruction,
             "name": name
         }
-        
         return (payload,)
 
 
 class LLMNode:
+    LLM_PROVIDERS = ['openai', 'azure', 'groq', 'cohere', 'gemini'] 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "input": ("INPUT",),
-                "llm_config_name": ("STRING", {"multiline": False}),
+                "llm_name": (cls.LLM_PROVIDERS,),
             },
         }
 
@@ -69,19 +60,18 @@ class LLMNode:
     FUNCTION = "select"
     CATEGORY = "LLM"
 
-    def select(self, input, llm_config_name):
+    def select(self, input, llm_name):
         # Use the llm_config_name directly from the widget values
-        payload = {"input": input, "llm_config_name": llm_config_name}
-
+        payload = {"provider": llm_name}
         # Return the LLM configuration
         return (payload,)
-
+    
 class KnowledgeBaseNode:
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "knowledgebases": ("STRING", {"multiline": True}),  # Ensure multiline input is handled
+                "knowledgebases": ("STRING", {"multiline": True}), 
             },
         }
 
@@ -118,23 +108,22 @@ class MemoryNode:
     CATEGORY = "Memory"
 
     def generate_config(self, collection_name, host="", port=8000, persist_path=""):
-        config = {
+        payload = {
             "collection_name": collection_name,
             "host": host,
             "port": port,
             "persist_path": persist_path
         }
-
-        return (config,)
+        return (payload,)
 
 
 class ToolsNode:
     TOOL_NAMES = [
-        "DocumentLoader", "GitHubSearchTool", "SerpSearch",
-        "SerperSearch", "TavilyQASearch", "UnstructuredIO",
-        "WebLoader", "YouTubeSearch", "DuckDuckGoNewsSearch", "WebBaseContextTool"
-    ]
-
+                "DocumentLoader", "GitHubSearchTool", "SerpSearch", 
+                "SerperSearch", "TavilyQASearch", "UnstructuredIO", "SummarizerAction", "FormatterAction", 
+                "ReadFileAction", "WriteFileAction", "CreateFileAction",
+                "WebLoader", "YouTubeSearchTool", "WebBaseContextTool", "DuckDuckGoNewsSearch"
+            ]
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -149,8 +138,7 @@ class ToolsNode:
 
     def output_tools(self, **tool_states):
         selected_tools = [tool for tool, state in tool_states.items() if state]
-        payload = {"selected_tools": selected_tools}
-        return (payload,)
+        return (selected_tools,)
 
 
 class TaskPlannerNode:
@@ -158,13 +146,13 @@ class TaskPlannerNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "llm": ("LLM",),
+                "llm_config": ("LLM",),
                 "tools": ("TOOL", {"multiple": True}),
                 "auto_assign": ("BOOLEAN", {"default": False}),
                 "memory": ("MEMORY",)
             },
             "optional": {
-                "knowledge_base": ("KNOWLEDGE_BASE",)  
+                "knowledge_base": ("KNOWLEDGE_BASE",)
             }
         }
 
@@ -172,42 +160,42 @@ class TaskPlannerNode:
     FUNCTION = "plan_tasks"
     CATEGORY = "Task Planning"
 
-    def plan_tasks(self, llm, tools, auto_assign, memory, knowledge_base=None):
+    def plan_tasks(self, llm_config, tools, auto_assign, memory, knowledge_base=None):
         if not isinstance(tools, (list, tuple)):
             tools = [tools]
 
-        # Prepare payload; include knowledge_base only if provided
-        payload = {
-            "llm": llm,
-            "tools": tools,
-            "auto_assign": auto_assign,
+        # Prepare the task plan; include knowledge_base only if provided
+        task_plan = {
+            "llm_config": llm_config,
             "memory": memory,
+            "current_task": 0,
+            "completed_tasks": {},
+            "auto_assigned": auto_assign
         }
-        
+
+        # Add knowledge_base only if provided
         if knowledge_base:
-            payload["knowledge_base"] = knowledge_base
+            task_plan["knowledge_base"] = knowledge_base
 
-        # Generate the task plan, passing the knowledge_base only if it's provided
-        payload["auto_assign"] = auto_assign 
-
-        return (payload,)
+        return (task_plan,)
 
 
 
 class WorkerNode:
     TOOL_NAMES = [
-        "DocumentLoader", "GitHubSearchTool", "SerpSearch",
-        "SerperSearch", "TavilyQASearch", "UnstructuredIO",
-        "WebLoader", "YouTubeSearch", "WebBaseContextTool", "DuckDuckGoNewsSearch"
-    ]
-
+                "DocumentLoader", "GitHubSearchTool", "SerpSearch", 
+                "SerperSearch", "TavilyQASearch", "UnstructuredIO", "SummarizerAction", "FormatterAction", 
+                "ReadFileAction", "WriteFileAction", "CreateFileAction",
+                "WebLoader", "YouTubeSearchTool", "WebBaseContextTool", "DuckDuckGoNewsSearch"
+            ]
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "task_plan": ("TASK_PLAN",),
-                "worker_role": ("STRING", {"default": "Worker Role"}),  # Worker role comes first
-                "llm": ("LLM",),
+                "worker_role": ("STRING", {"default": "Worker Role"}),  
+                "worker_instruction" : ("STRING", {"default": "Worker Instruction"}),  
+                "llm_config": ("LLM",),
                 **{tool: ("BOOLEAN", {"default": False}) for tool in cls.TOOL_NAMES}
             },
             "optional": {
@@ -219,26 +207,26 @@ class WorkerNode:
     FUNCTION = "execute_task"
     CATEGORY = "Worker"
 
-    def execute_task(self, task_plan, worker_role, llm, previous_output=None, **tools):
+    def execute_task(self, task_plan, worker_role, worker_instruction, llm_config, previous_output=None, **tools):
         # Extract the tool states
         selected_tools = [tool for tool, state in tools.items() if state]
         
         # Create the payload for the API call
         payload = {
             "task_plan": task_plan,
-            "worker_role": worker_role,  # Display worker role instead of worker id
-            "llm": llm,
+            "worker_role": worker_role,  
+            "worker_instruction": worker_instruction,
+            "llm_config": llm_config,
             "selected_tools": selected_tools,
             "previous_output": previous_output
         }
-        # Prepare the task result with worker role
         task_result = {
-            "worker_role": worker_role,  # Show worker role at the top
+            "worker_role": worker_role,  
             "tools": {tool: tools.get(tool, False) for tool in self.TOOL_NAMES}
         }
 
         # Return the task result
-        return (payload,)
+        return (task_result,)
 
 class OutputNode:
     @classmethod
@@ -258,7 +246,7 @@ class OutputNode:
         payload = {"input": input}
 
         return (payload,)
-
+    
 
 # ComfyUI node registration
 NODE_CLASS_MAPPINGS = {
@@ -283,34 +271,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "MemoryNode": "Memory"
 }
 
-
-# ComfyUI node registration
-NODE_CLASS_MAPPINGS = {
-    "InputNode": InputNode,
-    "LLMNode": LLMNode,
-    "KnowledgeBaseNode": KnowledgeBaseNode,
-    "ToolsNode": ToolsNode,
-    "TaskPlannerNode": TaskPlannerNode,
-    "WorkerNode": WorkerNode,
-    "OutputNode": OutputNode,
-    "MemoryNode": MemoryNode
-}
-
-# ComfyUI node display name mappings
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "InputNode": "Input",
-    "AzureChatConfigModelNode": "Azure Chat Config",
-    "GroqConfigModelNode": "Groq Config",
-    "GeminiConfigModelNode": "Gemini Config",
-    "HuggingFaceConfigModelNode": "HuggingFace Config",
-    "LLMNode": "LLM Processor",
-    "KnowledgeBaseNode": "Knowledge Base",
-    "ToolsNode": "Tools",
-    "TaskPlannerNode": "Task Planner",
-    "WorkerNode": "Worker",
-    "OutputNode": "Output",
-    "MemoryNode": "Memory"
-}
 
 EXTENSION_WEB_DIRS = {}
 
@@ -423,47 +383,7 @@ def init_builtin_extra_nodes():
         None
     """
     extras_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy_extras")
-    extras_files = [
-        "nodes_latent.py",
-        "nodes_hypernetwork.py",
-        "nodes_upscale_model.py",
-        "nodes_post_processing.py",
-        "nodes_mask.py",
-        "nodes_compositing.py",
-        "nodes_rebatch.py",
-        "nodes_model_merging.py",
-        "nodes_tomesd.py",
-        "nodes_clip_sdxl.py",
-        "nodes_canny.py",
-        "nodes_freelunch.py",
-        "nodes_custom_sampler.py",
-        "nodes_hypertile.py",
-        "nodes_model_advanced.py",
-        "nodes_model_downscale.py",
-        "nodes_images.py",
-        "nodes_video_model.py",
-        "nodes_sag.py",
-        "nodes_perpneg.py",
-        "nodes_stable3d.py",
-        "nodes_sdupscale.py",
-        "nodes_photomaker.py",
-        "nodes_cond.py",
-        "nodes_morphology.py",
-        "nodes_stable_cascade.py",
-        "nodes_differential_diffusion.py",
-        "nodes_ip2p.py",
-        "nodes_model_merging_model_specific.py",
-        "nodes_pag.py",
-        "nodes_align_your_steps.py",
-        "nodes_attention_multiply.py",
-        "nodes_advanced_samplers.py",
-        "nodes_webcam.py",
-        "nodes_audio.py",
-        "nodes_sd3.py",
-        "nodes_gits.py",
-        "nodes_controlnet.py",
-        "nodes_hunyuan.py",
-    ]
+    extras_files = []
 
     import_failed = []
     for node_file in extras_files:
