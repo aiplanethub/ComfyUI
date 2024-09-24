@@ -236,22 +236,22 @@ class ComfyApi extends EventTarget {
     } else if (number != 0) {
       body.number = number;
     }
-    const url = `http://127.0.0.1:8000/api/v1/private/execution/${application_id}/prompt`;
-	const res = await fetch(url, {
-		method: "POST",  // Use POST method
-		headers: {
-			"Content-Type": "application/json",  // Setting the content type to JSON
-			"Authorization": `Bearer ${token}`
-		},
-		body: JSON.stringify(body),  // Converting the body to JSON format
-	});
-    // const res = await this.fetchApi("/prompt", {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: JSON.stringify(body),
-    // });
+  //   const url = `http://127.0.0.1:8000/api/v1/private/execution/${application_id}/prompt`;
+	// const res = await fetch(url, {
+	// 	method: "POST",  // Use POST method
+	// 	headers: {
+	// 		"Content-Type": "application/json",  // Setting the content type to JSON
+	// 		"Authorization": `Bearer ${token}`
+	// 	},
+	// 	body: JSON.stringify(body),  // Converting the body to JSON format
+	//});
+    const res = await this.fetchApi("/prompt", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
 
     if (res.status !== 200) {
       throw {

@@ -338,7 +338,6 @@ export class ComfyUI {
       type: "boolean",
       defaultValue: true,
     });
-
     const promptFilename = this.settings.addSetting({
       id: "Comfy.PromptFilename",
       name: "Prompt for filename when saving workflow",
@@ -640,7 +639,10 @@ export class ComfyUI {
                   Authorization: `Bearer ${accessToken}`,
                   "Content-Type": "application/json",
                 },
-                body: JSON.stringify(workflowData),
+                body: JSON.stringify({
+                  workflow_data: workflowData, 
+                  autosave: false  
+                }),
               }
             );
 
