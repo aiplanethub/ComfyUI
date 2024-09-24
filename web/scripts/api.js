@@ -237,7 +237,7 @@ class ComfyApi extends EventTarget {
       body.number = number;
     }
 
-    const baseUrl = window.env.OPENAGI_BACKEND_URL;
+    const baseUrl = "https://openagi-backend.staging.stack.aiplanet.com/";
     const url = `${baseUrl}api/v1/private/execution/${application_id}/prompt`;
 	const res = await fetch(url, {
 		method: "POST",  // Use POST method
