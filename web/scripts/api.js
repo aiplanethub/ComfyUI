@@ -236,7 +236,9 @@ class ComfyApi extends EventTarget {
     } else if (number != 0) {
       body.number = number;
     }
-    const url = `http://127.0.0.1:8000/api/v1/private/execution/${application_id}/prompt`;
+
+    const baseUrl = window.env.OPENAGI_BACKEND_URL;
+    const url = `${baseUrl}api/v1/private/execution/${application_id}/prompt`;
 	const res = await fetch(url, {
 		method: "POST",  // Use POST method
 		headers: {
