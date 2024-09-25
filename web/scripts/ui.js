@@ -13,13 +13,7 @@ export const ComfyDialog = _ComfyDialog;
 /**
  * @template {string | (keyof HTMLElementTagNameMap)} K
  * @param {K} tag HTML Element Tag and optional classes e.g. div.class1.class2
- * @param {string | Element | Element[] | ({
- *   parent?: Element,
- *   $?: (el: ElementType<K>) => void,
- *   dataset?: DOMStringMap,
- *   style?: Partial<CSSStyleDeclaration>,
- *   for?: string
- * } & Omit<Partial<ElementType<K>>, "style">) | undefined} [propsOrChildren]
+ * @param {string | Element | Element[] | (Object)} [propsOrChildren]
  * @param {string | Element | Element[] | undefined} [children]
  * @returns {ElementType<K>}
  */
@@ -36,6 +30,7 @@ export function $el(tag, propsOrChildren, children) {
     } else if (propsOrChildren instanceof Element) {
       propsOrChildren = [propsOrChildren];
     }
+
     if (Array.isArray(propsOrChildren)) {
       element.append(...propsOrChildren);
     } else {
@@ -58,6 +53,7 @@ export function $el(tag, propsOrChildren, children) {
       }
 
       Object.assign(element, propsOrChildren);
+
       if (children) {
         element.append(
           ...(children instanceof Array ? children.filter(Boolean) : [children])
@@ -73,6 +69,7 @@ export function $el(tag, propsOrChildren, children) {
       }
     }
   }
+
   return element;
 }
 
@@ -83,6 +80,7 @@ function dragElement(dragEl, settings) {
     posStartY = 0,
     newPosX = 0,
     newPosY = 0;
+
   if (dragEl.getElementsByClassName("drag-handle")[0]) {
     dragEl.getElementsByClassName("drag-handle")[0].onmousedown = dragMouseDown;
   } else {
@@ -106,7 +104,7 @@ function dragElement(dragEl, settings) {
 
       positionElement();
     } catch (exception) {
-      // robust
+      // Catch exceptions
     }
   }
 
@@ -167,8 +165,10 @@ function dragElement(dragEl, settings) {
   function dragMouseDown(e) {
     e = e || window.event;
     e.preventDefault();
+
     posStartX = e.clientX;
     posStartY = e.clientY;
+
     document.onmouseup = closeDragElement;
     document.onmousemove = elementDrag;
   }
@@ -372,7 +372,7 @@ export class ComfyUI {
     const fileInput = $el("input", {
       id: "comfy-file-input",
       type: "file",
-      accept: ".json,image/png,.latent,.safetensors,image/webp,audio/flac",
+      accept: ".json,.pdf",
       style: { display: "none" },
       parent: document.body,
       onchange: () => {
@@ -800,7 +800,7 @@ export class ComfyUI {
         onclick: async () => {
           app.resetView();
         },
-      })
+      }),
     ]);
 
     const devMode = this.settings.addSetting({
