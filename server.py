@@ -160,32 +160,102 @@ class PromptServer():
                 type_dir = folder_paths.get_output_directory()
 
             return type_dir, dir_type
-
-        def compare_image_hash(filepath, image):
-            hasher = node_helpers.hasher()
+        
+        def compare_file_hash(filepath, file):
+            hasher = hashlib.md5()
             
-            # function to compare hashes of two images to see if it already exists, fix to #3465
             if os.path.exists(filepath):
-                a = hasher()
-                b = hasher()
                 with open(filepath, "rb") as f:
-                    a.update(f.read())
-                    b.update(image.file.read())
-                    image.file.seek(0)
-                    f.close()
-                return a.hexdigest() == b.hexdigest()
+                    buf = f.read()
+                    hasher.update(buf)
+                existing_file_hash = hasher.hexdigest()
+                
+                hasher = hashlib.md5()
+                
+                file.file.seek(0)
+                buf = file.file.read()
+                hasher.update(buf)
+                new_file_hash = hasher.hexdigest()
+                
+                file.file.seek(0)
+                
+                return existing_file_hash == new_file_hash
+            
             return False
 
-        def image_upload(post, image_save_function=None):
-            image = post.get("image")
+        # def compare_image_hash(filepath, image):
+        #     hasher = node_helpers.hasher()
+            
+        #     # function to compare hashes of two images to see if it already exists, fix to #3465
+        #     if os.path.exists(filepath):
+        #         a = hasher()
+        #         b = hasher()
+        #         with open(filepath, "rb") as f:
+        #             a.update(f.read())
+        #             b.update(image.file.read())
+        #             image.file.seek(0)
+        #             f.close()
+        #         return a.hexdigest() == b.hexdigest()
+        #     return False
+
+        # def image_upload(post, image_save_function=None):
+        #     image = post.get("image")
+        #     overwrite = post.get("overwrite")
+        #     image_is_duplicate = False
+
+        #     image_upload_type = post.get("type")
+        #     upload_dir, image_upload_type = get_dir_by_type(image_upload_type)
+
+        #     if image and image.file:
+        #         filename = image.filename
+        #         if not filename:
+        #             return web.Response(status=400)
+
+        #         subfolder = post.get("subfolder", "")
+        #         full_output_folder = os.path.join(upload_dir, os.path.normpath(subfolder))
+        #         filepath = os.path.abspath(os.path.join(full_output_folder, filename))
+
+        #         if os.path.commonpath((upload_dir, filepath)) != upload_dir:
+        #             return web.Response(status=400)
+
+        #         if not os.path.exists(full_output_folder):
+        #             os.makedirs(full_output_folder)
+
+        #         split = os.path.splitext(filename)
+
+        #         if overwrite is not None and (overwrite == "true" or overwrite == "1"):
+        #             pass
+        #         else:
+        #             i = 1
+        #             while os.path.exists(filepath):
+        #                 if compare_image_hash(filepath, image): #compare hash to prevent saving of duplicates with same name, fix for #3465
+        #                     image_is_duplicate = True
+        #                     break
+        #                 filename = f"{split[0]} ({i}){split[1]}"
+        #                 filepath = os.path.join(full_output_folder, filename)
+        #                 i += 1
+
+        #         if not image_is_duplicate:
+        #             if image_save_function is not None:
+        #                 image_save_function(image, post, filepath)
+        #             else:
+        #                 with open(filepath, "wb") as f:
+        #                     f.write(image.file.read())
+
+        #         return web.json_response({"name" : filename, "subfolder": subfolder, "type": image_upload_type})
+        #     else:
+        #         return web.Response(status=400)
+
+        def file_upload(post, file_save_function=None):
+            file = post.get("file")
             overwrite = post.get("overwrite")
-            image_is_duplicate = False
+            file_is_duplicate = False
 
-            image_upload_type = post.get("type")
-            upload_dir, image_upload_type = get_dir_by_type(image_upload_type)
+            file_upload_type = post.get("type")
+            upload_dir, file_upload_type = get_dir_by_type(file_upload_type)
 
-            if image and image.file:
-                filename = image.filename
+            if file and file.file:
+                filename = file.filename
                 if not filename:
                     return web.Response(status=400)
 
@@ -206,72 +276,122 @@ class PromptServer():
                 else:
                     i = 1
                     while os.path.exists(filepath):
-                        if compare_image_hash(filepath, image): #compare hash to prevent saving of duplicates with same name, fix for #3465
-                            image_is_duplicate = True
+                        if compare_file_hash(filepath, file):
+                            file_is_duplicate = True
                             break
                         filename = f"{split[0]} ({i}){split[1]}"
                         filepath = os.path.join(full_output_folder, filename)
                         i += 1
 
-                if not image_is_duplicate:
-                    if image_save_function is not None:
-                        image_save_function(image, post, filepath)
+                if not file_is_duplicate:
+                    if file_save_function is not None:
+                        file_save_function(file, post, filepath)
                     else:
                         with open(filepath, "wb") as f:
-                            f.write(image.file.read())
+                            f.write(file.file.read())
 
-                return web.json_response({"name" : filename, "subfolder": subfolder, "type": image_upload_type})
+                return web.json_response({"name": filename, "subfolder": subfolder, "type": file_upload_type})
             else:
                 return web.Response(status=400)
 
         @routes.post("/upload/image")
-        async def upload_image(request):
+        # async def upload_image(request):
+        #     post = await request.post()
+        #     return image_upload(post)
+        async def upload_file(request):
             post = await request.post()
-            return image_upload(post)
+            return file_upload(post)
 
 
         @routes.post("/upload/mask")
         async def upload_mask(request):
             post = await request.post()
-
-            def image_save_function(image, post, filepath):
+            def file_save_function(file, post, filepath):
                 original_ref = json.loads(post.get("original_ref"))
                 filename, output_dir = folder_paths.annotated_filepath(original_ref['filename'])
-
-                # validation for security: prevent accessing arbitrary path
+                
                 if filename[0] == '/' or '..' in filename:
                     return web.Response(status=400)
-
+                
                 if output_dir is None:
                     type = original_ref.get("type", "output")
                     output_dir = folder_paths.get_directory_by_type(type)
-
+                
                 if output_dir is None:
                     return web.Response(status=400)
-
+                
                 if original_ref.get("subfolder", "") != "":
                     full_output_dir = os.path.join(output_dir, original_ref["subfolder"])
                     if os.path.commonpath((os.path.abspath(full_output_dir), output_dir)) != output_dir:
                         return web.Response(status=403)
                     output_dir = full_output_dir
+                
+                file_path = os.path.join(output_dir, filename)
+                
+                if os.path.isfile(file_path):
+                    file_extension = os.path.splitext(filename)[1].lower()
+                    
+                    if file_extension in ['.txt', '.pdf', '.docx', '.pptx', '.md', '.csv', '.xlsx']:
+                        with open(filepath, 'wb') as f:
+                            f.write(file.file.read())
+                    elif file_extension in ['.png', '.jpg', '.jpeg', '.webp']:
+                        with Image.open(file_path) as original_pil:
+                            metadata = PngInfo()
+                            if hasattr(original_pil, 'text'):
+                                for key in original_pil.text:
+                                    metadata.add_text(key, original_pil.text[key])
+                            original_pil = original_pil.convert('RGBA')
+                            mask_pil = Image.open(file.file).convert('RGBA')
+                            
+                            new_alpha = mask_pil.getchannel('A')
+                            original_pil.putalpha(new_alpha)
+                            original_pil.save(filepath, compress_level=4, pnginfo=metadata)
+                    else:
+                        return web.Response(status=400, text="Unsupported file type")
+                else:
+                    with open(filepath, 'wb') as f:
+                        f.write(file.file.read())
+                
+            return file_upload(post, file_save_function)
 
-                file = os.path.join(output_dir, filename)
+            # def image_save_function(image, post, filepath):
+            #     original_ref = json.loads(post.get("original_ref"))
+            #     filename, output_dir = folder_paths.annotated_filepath(original_ref['filename'])
 
-                if os.path.isfile(file):
-                    with Image.open(file) as original_pil:
-                        metadata = PngInfo()
-                        if hasattr(original_pil,'text'):
-                            for key in original_pil.text:
-                                metadata.add_text(key, original_pil.text[key])
-                        original_pil = original_pil.convert('RGBA')
-                        mask_pil = Image.open(image.file).convert('RGBA')
+            #     # validation for security: prevent accessing arbitrary path
+            #     if filename[0] == '/' or '..' in filename:
+            #         return web.Response(status=400)
 
-                        # alpha copy
-                        new_alpha = mask_pil.getchannel('A')
-                        original_pil.putalpha(new_alpha)
-                        original_pil.save(filepath, compress_level=4, pnginfo=metadata)
+            #     if output_dir is None:
+            #         type = original_ref.get("type", "output")
+            #         output_dir = folder_paths.get_directory_by_type(type)
 
-            return image_upload(post, image_save_function)
+            #     if output_dir is None:
+            #         return web.Response(status=400)
+
+            #     if original_ref.get("subfolder", "") != "":
+            #         full_output_dir = os.path.join(output_dir, original_ref["subfolder"])
+            #         if os.path.commonpath((os.path.abspath(full_output_dir), output_dir)) != output_dir:
+            #             return web.Response(status=403)
+            #         output_dir = full_output_dir
+
+            #     file = os.path.join(output_dir, filename)
+
+            #     if os.path.isfile(file):
+            #         with Image.open(file) as original_pil:
+            #             metadata = PngInfo()
+            #             if hasattr(original_pil,'text'):
+            #                 for key in original_pil.text:
+            #                     metadata.add_text(key, original_pil.text[key])
+            #             original_pil = original_pil.convert('RGBA')
+            #             mask_pil = Image.open(image.file).convert('RGBA')
+
+            #             # alpha copy
+            #             new_alpha = mask_pil.getchannel('A')
+            #             original_pil.putalpha(new_alpha)
+            #             original_pil.save(filepath, compress_level=4, pnginfo=metadata)
+
+            # return image_upload(post, image_save_function)
 
         @routes.get("/view")
         async def view_image(request):

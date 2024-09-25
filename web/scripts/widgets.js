@@ -375,21 +375,21 @@ export const ComfyWidgets = {
 		const imageWidget = node.widgets.find((w) => w.name === (inputData[1]?.widget ?? "image"));
 		let uploadWidget;
 
-		function showImage(name) {
-			const img = new Image();
-			img.onload = () => {
-				node.imgs = [img];
-				app.graph.setDirtyCanvas(true);
-			};
-			let folder_separator = name.lastIndexOf("/");
-			let subfolder = "";
-			if (folder_separator > -1) {
-				subfolder = name.substring(0, folder_separator);
-				name = name.substring(folder_separator + 1);
-			}
-			img.src = api.apiURL(`/view?filename=${encodeURIComponent(name)}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}${app.getRandParam()}`);
-			node.setSizeForImage?.();
-		}
+		// function showImage(name) {
+		// 	const img = new Image();
+		// 	img.onload = () => {
+		// 		node.imgs = [img];
+		// 		app.graph.setDirtyCanvas(true);
+		// 	};
+		// 	let folder_separator = name.lastIndexOf("/");
+		// 	let subfolder = "";
+		// 	if (folder_separator > -1) {
+		// 		subfolder = name.substring(0, folder_separator);
+		// 		name = name.substring(folder_separator + 1);
+		// 	}
+		// 	img.src = api.apiURL(`/view?filename=${encodeURIComponent(name)}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}${app.getRandParam()}`);
+		// 	node.setSizeForImage?.();
+		// }
 
 		var default_value = imageWidget.value;
 		Object.defineProperty(imageWidget, "value", {
