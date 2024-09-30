@@ -424,7 +424,7 @@ export const ComfyWidgets = {
 		// Add our own callback to the combo widget to render an image when it changes
 		const cb = node.callback;
 		imageWidget.callback = function () {
-			showImage(imageWidget.value);
+			//showImage(imageWidget.value);
 			if (cb) {
 				return cb.apply(this, arguments);
 			}
@@ -433,11 +433,11 @@ export const ComfyWidgets = {
 		// On load if we have a value then render the image
 		// The value isnt set immediately so we need to wait a moment
 		// No change callbacks seem to be fired on initial setting of the value
-		requestAnimationFrame(() => {
-			if (imageWidget.value) {
-				showImage(imageWidget.value);
-			}
-		});
+		// requestAnimationFrame(() => {
+		// 	if (imageWidget.value) {
+		// 		showImage(imageWidget.value);
+		// 	}
+		// });
 
 		async function uploadFile(file, updateNode, pasted = false) {
 			try {
@@ -461,7 +461,7 @@ export const ComfyWidgets = {
 					}
 
 					if (updateNode) {
-						showImage(path);
+						//showImage(path);
 						imageWidget.value = path;
 					}
 				} else {
@@ -475,7 +475,7 @@ export const ComfyWidgets = {
 		const fileInput = document.createElement("input");
 		Object.assign(fileInput, {
 			type: "file",
-			accept: "image/jpeg,image/png,image/webp",
+			accept: ".txt,.pdf,.docx,.pptx,.md,.csv,.xlsx",
 			style: "display: none",
 			onchange: async () => {
 				if (fileInput.files.length) {
@@ -489,7 +489,7 @@ export const ComfyWidgets = {
 		uploadWidget = node.addWidget("button", inputName, "image", () => {
 			fileInput.click();
 		});
-		uploadWidget.label = "choose file to upload";
+		uploadWidget.label = "Choose file to upload";
 		uploadWidget.serialize = false;
 
 		// Add handler to check if an image is being dragged over our node
