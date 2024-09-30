@@ -223,46 +223,69 @@ class ComfyApi extends EventTarget {
    * @param {number} number The index at which to queue the prompt, passing -1 will insert the prompt at the front of the queue
    * @param {object} prompt The prompt data to queue
    */
-  async queuePrompt(number, { output, workflow }, application_id, token) {
+  async queuePrompt(number, { output, workflow }, application_id) {
     const body = {
-      client_id: this.clientId,
-      prompt: output,
-      extra_data: { extra_pnginfo: { workflow } },
+        client_id: this.clientId,
+        prompt: output,
+        extra_data: { extra_pnginfo: { workflow } },
     };
-    // console.log("Body: ", JSON.stringify(body, null, 2));
 
     if (number === -1) {
-      body.front = true;
-    } else if (number != 0) {
-      body.number = number;
+        body.front = true;
+    } else if (number !== 0) {
+        body.number = number;
     }
 
-    const baseUrl = "https://openagi-backend.staging.stack.aiplanet.com/";
-    const url = `${baseUrl}api/v1/private/execution/${application_id}/prompt`;
-	const res = await fetch(url, {
-		method: "POST",  // Use POST method
-		headers: {
-			"Content-Type": "application/json",  // Setting the content type to JSON
-			"Authorization": `Bearer ${token}`
-		},
-		body: JSON.stringify(body),  // Converting the body to JSON format
-	});
-    // const res = await this.fetchApi("/prompt", {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: JSON.stringify(body),
-    // });
+    const baseUrl = "http://127.0.0.1:8000/";
+    const tokenUrl = `${baseUrl}api/v1/private/token`;  // URL to get the token
 
-    if (res.status !== 200) {
-      throw {
-        response: await res.json(),
-      };
+    // Fetch the token
+    try {
+        const tokenResponse = await fetch(tokenUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",  // Set form data content type
+            },
+            body: new URLSearchParams({
+                username: "abc@gmail.com",  // Replace with actual username (form_data.username in Python)
+                password: "abc"   // Replace with actual password
+            })
+        });
+
+        if (!tokenResponse.ok) {
+            const errorDetails = await tokenResponse.json();
+            console.error("Failed to fetch token:", errorDetails);
+            throw new Error("Failed to fetch token");
+        }
+
+        const tokenData = await tokenResponse.json();
+        const token = tokenData.access_token;  // Extract the access token
+
+        // Now proceed with the actual request using the fetched token
+        const url = `${baseUrl}api/v1/private/execution/60161400-3bdf-4f4b-b02c-f14e57ccfe31/prompt`;
+        const res = await fetch(url, {
+            method: "POST",  // Use POST method
+            headers: {
+                "Content-Type": "application/json",  // Setting the content type to JSON
+                "Authorization": `Bearer ${token}`  // Pass the fetched token here
+            },
+            body: JSON.stringify(body),  // Converting the body to JSON format
+        });
+
+        if (res.status !== 200) {
+            throw {
+                response: await res.json(),
+            };
+        }
+
+        return await res.json();
+
+    } catch (error) {
+        console.error("Error:", error.message || error);
+        throw error;
     }
+}
 
-    return await res.json();
-  }
 
   /**
    * Loads a list of items (queue or history)
