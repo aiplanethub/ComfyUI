@@ -6,7 +6,7 @@ app.registerExtension({
 	name: "Comfy.UploadImage",
 	async beforeRegisterNodeDef(nodeType, nodeData, app) {
 		if (nodeData?.input?.required?.image?.[1]?.file_upload === true) {
-			nodeData.input.required.upload = ["IMAGEUPLOAD"];
+			nodeData.input.required.upload = ["FILEUPLOAD"];
 		}
 	},
 });

@@ -159,7 +159,7 @@ export class ComfyWorkflowsMenu {
 				function getImageWidget(node) {
 					const inputs = { ...node.constructor?.nodeData?.input?.required, ...node.constructor?.nodeData?.input?.optional };
 					for (const input in inputs) {
-						if (inputs[input][0] === "IMAGEUPLOAD") {
+						if (inputs[input][0] === "FILEUPLOAD") {
 							const imageWidget = node.widgets.find((w) => w.name === (inputs[input]?.[1]?.widget ?? "image"));
 							if (imageWidget) return imageWidget;
 						}

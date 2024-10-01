@@ -823,7 +823,7 @@ describe("group node", () => {
 			[preview.id]: { inputs: { images: [decode2.id + "", 0] }, class_type: preview.node.type },
 		});
 	});
-	test("works with IMAGEUPLOAD widget", async () => {
+	test("works with FILEUPLOAD widget", async () => {
 		const { ez, graph, app } = await start();
 		const img = ez.OutputNode();
 		const preview1 = ez.PreviewImage(img.outputs[0]);

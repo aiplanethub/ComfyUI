@@ -347,7 +347,7 @@ export class GroupNodeConfig {
 			if (!extra) extra = {};
 			extra.control_after_generate = `${prefix}control_after_generate`;
 		}
-		if (config[0] === "IMAGEUPLOAD") {
+		if (config[0] === "FILEUPLOAD") {
 			if (!extra) extra = {};
 			extra.widget = this.oldToNewWidgetMap[node.index]?.[config[1]?.widget ?? "image"] ?? "image";
 		}
