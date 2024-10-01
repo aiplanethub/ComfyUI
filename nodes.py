@@ -1470,7 +1470,7 @@ class PreviewImage(SaveImage):
                 "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
                 }
 
-class OutputNode:
+class InputNode:
     @classmethod
     def INPUT_TYPES(s):
         input_dir = folder_paths.get_input_directory()
@@ -1744,7 +1744,7 @@ NODE_CLASS_MAPPINGS = {
     "RepeatLatentBatch": RepeatLatentBatch,
     "SaveImage": SaveImage,
     "PreviewImage": PreviewImage,
-    "OutputNode": OutputNode,
+    "InputNode": InputNode,
     "LoadImageMask": LoadImageMask,
     "ImageScale": ImageScale,
     "ImageScaleBy": ImageScaleBy,
@@ -1843,7 +1843,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     # Image
     "SaveImage": "Save Image",
     "PreviewImage": "Preview Image",
-    "OutputNode": "Output",
+    "InputNode": "Input",
     "LoadImageMask": "Load Image (as Mask)",
     "ImageScale": "Upscale Image",
     "ImageScaleBy": "Upscale Image By",

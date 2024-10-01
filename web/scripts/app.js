@@ -926,7 +926,7 @@ export class ComfyApp {
 
 					// No image node selected: add a new one
 					if (!imageNode) {
-						const newNode = LiteGraph.createNode("OutputNode");
+						const newNode = LiteGraph.createNode("InputNode");
 						newNode.pos = [...this.canvas.graph_mouse];
 						imageNode = this.graph.add(newNode);
 						this.graph.change();

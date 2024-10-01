@@ -678,7 +678,7 @@ app.registerExtension({
 				}
 
 				// When our value changes, update other widgets to reflect our changes
-				// e.g. so OutputNode shows correct image
+				// e.g. so InputNode shows correct image
 				const callback = widget.callback;
 				const self = this;
 				widget.callback = function () {
