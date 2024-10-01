@@ -372,7 +372,7 @@ export const ComfyWidgets = {
 		return res;
 	},
 	FILEUPLOAD(node, inputName, inputData, app) {
-		const imageWidget = node.widgets.find((w) => w.name === (inputData[1]?.widget ?? "image"));
+		const imageWidget = node.widgets.find((w) => w.name === (inputData[1]?.widget ?? "file"));
 		let uploadWidget;
 
 		// function showImage(name) {
@@ -443,7 +443,7 @@ export const ComfyWidgets = {
 			try {
 				// Wrap file in formdata so it includes filename
 				const body = new FormData();
-				body.append("image", file);
+				body.append("file", file);
 				if (pasted) body.append("subfolder", "pasted");
 				const resp = await api.fetchApi("/upload/image", {
 					method: "POST",
@@ -486,7 +486,7 @@ export const ComfyWidgets = {
 		document.body.append(fileInput);
 
 		// Create the button widget for selecting the files
-		uploadWidget = node.addWidget("button", inputName, "image", () => {
+		uploadWidget = node.addWidget("button", inputName, "file", () => {
 			fileInput.click();
 		});
 		uploadWidget.label = "Choose file to upload";

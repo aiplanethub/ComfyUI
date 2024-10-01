@@ -160,7 +160,7 @@ export class ComfyWorkflowsMenu {
 					const inputs = { ...node.constructor?.nodeData?.input?.required, ...node.constructor?.nodeData?.input?.optional };
 					for (const input in inputs) {
 						if (inputs[input][0] === "FILEUPLOAD") {
-							const imageWidget = node.widgets.find((w) => w.name === (inputs[input]?.[1]?.widget ?? "image"));
+							const imageWidget = node.widgets.find((w) => w.name === (inputs[input]?.[1]?.widget ?? "file"));
 							if (imageWidget) return imageWidget;
 						}
 					}

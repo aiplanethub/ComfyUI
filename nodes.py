@@ -1476,7 +1476,7 @@ class OutputNode:
         input_dir = folder_paths.get_input_directory()
         files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f)) and f.endswith(('.txt', '.pdf', '.docx', '.pptx', '.md', '.csv', '.xlsx', '.png', '.jpg', '.jpeg', '.webp'))]
         return {"required":
-                    {"image": (sorted(files), {"file_upload": True})},
+                    {"file": (sorted(files), {"file_upload": True})},
                 }
 
     RETURN_TYPES = ("FILE",)

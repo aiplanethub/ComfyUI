@@ -177,7 +177,7 @@ class PromptServer():
             return False
 
         def image_upload(post, image_save_function=None):
-            image = post.get("image")  # Keeping the term 'image' as requested
+            image = post.get("file")  # Keeping the term 'image' as requested
             overwrite = post.get("overwrite")
             image_is_duplicate = False
 
