@@ -568,18 +568,18 @@ export class ComfyApp {
       return shiftY;
     }
 
-    node.prototype.setSizeForImage = function (force) {
-      if (!force && this.animatedImages) return;
+    // node.prototype.setSizeForImage = function (force) {
+    //   if (!force && this.animatedImages) return;
 
-      if (this.inputHeight || this.freeWidgetSpace > 210) {
-        this.setSize(this.size);
-        return;
-      }
-      const minHeight = getImageTop(this) + 220;
-      if (this.size[1] < minHeight) {
-        this.setSize([this.size[0], minHeight]);
-      }
-    };
+    //   if (this.inputHeight || this.freeWidgetSpace > 210) {
+    //     this.setSize(this.size);
+    //     return;
+    //   }
+    //   const minHeight = getImageTop(this) + 220;
+    //   if (this.size[1] < minHeight) {
+    //     this.setSize([this.size[0], minHeight]);
+    //   }
+    // };
 
     node.prototype.onDrawBackground = function (ctx) {
       if (!this.flags.collapsed) {
@@ -851,7 +851,7 @@ export class ComfyApp {
 
             let x = (dw - w) / 2;
             let y = (dh - h) / 2 + shiftY;
-            ctx.drawImage(this.imgs[imageIndex], x, y, w, h);
+            //ctx.drawImage(this.imgs[imageIndex], x, y, w, h);
 
             const drawButton = (x, y, sz, text) => {
               const hovered = LiteGraph.isInsideRectangle(
@@ -1014,7 +1014,7 @@ export class ComfyApp {
 
           // No image node selected: add a new one
           if (!imageNode) {
-            const newNode = LiteGraph.createNode("LoadImage");
+            const newNode = LiteGraph.createNode("InputNode");
             newNode.pos = [...this.canvas.graph_mouse];
             imageNode = this.graph.add(newNode);
             this.graph.change();

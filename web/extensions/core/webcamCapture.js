@@ -100,7 +100,7 @@ app.registerExtension({
 			body.append("image", file);
 			body.append("subfolder", "webcam");
 			body.append("type", "temp");
-			const resp = await api.fetchApi("/upload/image", {
+			const resp = await api.fetchApi("/upload/file", {
 				method: "POST",
 				body,
 			});

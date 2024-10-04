@@ -371,25 +371,25 @@ export const ComfyWidgets = {
 		}
 		return res;
 	},
-	IMAGEUPLOAD(node, inputName, inputData, app) {
-		const imageWidget = node.widgets.find((w) => w.name === (inputData[1]?.widget ?? "image"));
+	FILEUPLOAD(node, inputName, inputData, app) {
+		const imageWidget = node.widgets.find((w) => w.name === (inputData[1]?.widget ?? "file"));
 		let uploadWidget;
 
-		function showImage(name) {
-			const img = new Image();
-			img.onload = () => {
-				node.imgs = [img];
-				app.graph.setDirtyCanvas(true);
-			};
-			let folder_separator = name.lastIndexOf("/");
-			let subfolder = "";
-			if (folder_separator > -1) {
-				subfolder = name.substring(0, folder_separator);
-				name = name.substring(folder_separator + 1);
-			}
-			img.src = api.apiURL(`/view?filename=${encodeURIComponent(name)}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}${app.getRandParam()}`);
-			node.setSizeForImage?.();
-		}
+		// function showImage(name) {
+		// 	const img = new Image();
+		// 	img.onload = () => {
+		// 		node.imgs = [img];
+		// 		app.graph.setDirtyCanvas(true);
+		// 	};
+		// 	let folder_separator = name.lastIndexOf("/");
+		// 	let subfolder = "";
+		// 	if (folder_separator > -1) {
+		// 		subfolder = name.substring(0, folder_separator);
+		// 		name = name.substring(folder_separator + 1);
+		// 	}
+		// 	img.src = api.apiURL(`/view?filename=${encodeURIComponent(name)}&type=input&subfolder=${subfolder}${app.getPreviewFormatParam()}${app.getRandParam()}`);
+		// 	node.setSizeForImage?.();
+		// }
 
 		var default_value = imageWidget.value;
 		Object.defineProperty(imageWidget, "value", {
@@ -424,7 +424,7 @@ export const ComfyWidgets = {
 		// Add our own callback to the combo widget to render an image when it changes
 		const cb = node.callback;
 		imageWidget.callback = function () {
-			showImage(imageWidget.value);
+			//showImage(imageWidget.value);
 			if (cb) {
 				return cb.apply(this, arguments);
 			}
@@ -433,19 +433,19 @@ export const ComfyWidgets = {
 		// On load if we have a value then render the image
 		// The value isnt set immediately so we need to wait a moment
 		// No change callbacks seem to be fired on initial setting of the value
-		requestAnimationFrame(() => {
-			if (imageWidget.value) {
-				showImage(imageWidget.value);
-			}
-		});
+		// requestAnimationFrame(() => {
+		// 	if (imageWidget.value) {
+		// 		showImage(imageWidget.value);
+		// 	}
+		// });
 
 		async function uploadFile(file, updateNode, pasted = false) {
 			try {
 				// Wrap file in formdata so it includes filename
 				const body = new FormData();
-				body.append("image", file);
+				body.append("file", file);
 				if (pasted) body.append("subfolder", "pasted");
-				const resp = await api.fetchApi("/upload/image", {
+				const resp = await api.fetchApi("/upload/file", {
 					method: "POST",
 					body,
 				});
@@ -461,7 +461,7 @@ export const ComfyWidgets = {
 					}
 
 					if (updateNode) {
-						showImage(path);
+						//showImage(path);
 						imageWidget.value = path;
 					}
 				} else {
@@ -475,7 +475,7 @@ export const ComfyWidgets = {
 		const fileInput = document.createElement("input");
 		Object.assign(fileInput, {
 			type: "file",
-			accept: "image/jpeg,image/png,image/webp",
+			accept: ".txt,.pdf,.docx,.pptx,.md,.csv,.xlsx",
 			style: "display: none",
 			onchange: async () => {
 				if (fileInput.files.length) {
@@ -486,10 +486,10 @@ export const ComfyWidgets = {
 		document.body.append(fileInput);
 
 		// Create the button widget for selecting the files
-		uploadWidget = node.addWidget("button", inputName, "image", () => {
+		uploadWidget = node.addWidget("button", inputName, "file", () => {
 			fileInput.click();
 		});
-		uploadWidget.label = "choose file to upload";
+		uploadWidget.label = "Choose file to upload";
 		uploadWidget.serialize = false;
 
 		// Add handler to check if an image is being dragged over our node

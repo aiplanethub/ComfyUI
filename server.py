@@ -176,16 +176,16 @@ class PromptServer():
                 return a.hexdigest() == b.hexdigest()
             return False
 
-        def image_upload(post, image_save_function=None):
-            image = post.get("image")
+        def file_upload(post, file_save_function=None):
+            file = post.get("file")
             overwrite = post.get("overwrite")
             image_is_duplicate = False
 
             image_upload_type = post.get("type")
             upload_dir, image_upload_type = get_dir_by_type(image_upload_type)
 
-            if image and image.file:
-                filename = image.filename
+            if file and file.file:
+                filename = file.filename
                 if not filename:
                     return web.Response(status=400)
 
@@ -206,7 +206,7 @@ class PromptServer():
                 else:
                     i = 1
                     while os.path.exists(filepath):
-                        if compare_image_hash(filepath, image): #compare hash to prevent saving of duplicates with same name, fix for #3465
+                        if compare_image_hash(filepath, file): #compare hash to prevent saving of duplicates with same name, fix for #3465
                             image_is_duplicate = True
                             break
                         filename = f"{split[0]} ({i}){split[1]}"
@@ -214,27 +214,27 @@ class PromptServer():
                         i += 1
 
                 if not image_is_duplicate:
-                    if image_save_function is not None:
-                        image_save_function(image, post, filepath)
+                    if file_save_function is not None:
+                        file_save_function(file, post, filepath)
                     else:
                         with open(filepath, "wb") as f:
-                            f.write(image.file.read())
+                            f.write(file.file.read())
 
                 return web.json_response({"name" : filename, "subfolder": subfolder, "type": image_upload_type})
             else:
                 return web.Response(status=400)
 
-        @routes.post("/upload/image")
-        async def upload_image(request):
+        @routes.post("/upload/file")
+        async def upload_file(request):
             post = await request.post()
-            return image_upload(post)
+            return file_upload(post)
 
 
         @routes.post("/upload/mask")
         async def upload_mask(request):
             post = await request.post()
 
-            def image_save_function(image, post, filepath):
+            def file_save_function(file, post, filepath):
                 original_ref = json.loads(post.get("original_ref"))
                 filename, output_dir = folder_paths.annotated_filepath(original_ref['filename'])
 
@@ -264,14 +264,14 @@ class PromptServer():
                             for key in original_pil.text:
                                 metadata.add_text(key, original_pil.text[key])
                         original_pil = original_pil.convert('RGBA')
-                        mask_pil = Image.open(image.file).convert('RGBA')
+                        mask_pil = Image.open(file.file).convert('RGBA')
 
                         # alpha copy
                         new_alpha = mask_pil.getchannel('A')
                         original_pil.putalpha(new_alpha)
                         original_pil.save(filepath, compress_level=4, pnginfo=metadata)
 
-            return image_upload(post, image_save_function)
+            return file_upload(post, file_save_function)
 
         @routes.get("/view")
         async def view_image(request):

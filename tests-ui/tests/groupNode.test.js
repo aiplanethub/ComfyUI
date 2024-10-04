@@ -683,7 +683,7 @@ describe("group node", () => {
 		const { ez, graph, app } = await start();
 		const upscaleMethods = (await getNodeDef("ImageScaleBy")).input.required["upscale_method"][0];
 
-		const image = ez.LoadImage();
+		const image = ez.InputNode();
 		const scale1 = ez.ImageScaleBy(image.outputs[0]);
 		const scale2 = ez.ImageScaleBy(image.outputs[0]);
 		const preview1 = ez.PreviewImage(scale1.outputs[0]);
@@ -714,7 +714,7 @@ describe("group node", () => {
 			const scale2id = r ? `${group.id}:1` : scale2.id;
 			// Ensure widget value is applied to prompt
 			expect((await graph.toPrompt()).output).toStrictEqual({
-				[image.id]: { inputs: { image: "example.png", upload: "image" }, class_type: "LoadImage" },
+				[image.id]: { inputs: { image: "example.png", upload: "image" }, class_type: "InputNode" },
 				[scale1id]: {
 					inputs: { upscale_method: upscaleMethods[1], scale_by: 1, image: [`${image.id}`, 0] },
 					class_type: "ImageScaleBy",
@@ -823,9 +823,9 @@ describe("group node", () => {
 			[preview.id]: { inputs: { images: [decode2.id + "", 0] }, class_type: preview.node.type },
 		});
 	});
-	test("works with IMAGEUPLOAD widget", async () => {
+	test("works with FILEUPLOAD widget", async () => {
 		const { ez, graph, app } = await start();
-		const img = ez.LoadImage();
+		const img = ez.InputNode();
 		const preview1 = ez.PreviewImage(img.outputs[0]);
 
 		const group = await convertToGroup(app, graph, "test", [img, preview1]);
@@ -835,7 +835,7 @@ describe("group node", () => {
 	});
 	test("internal primitive populates widgets for all linked inputs", async () => {
 		const { ez, graph, app } = await start();
-		const img = ez.LoadImage();
+		const img = ez.InputNode();
 		const scale1 = ez.ImageScale(img.outputs[0]);
 		const scale2 = ez.ImageScale(img.outputs[0]);
 		ez.PreviewImage(scale1.outputs[0]);
@@ -853,7 +853,7 @@ describe("group node", () => {
 		expect((await graph.toPrompt()).output).toEqual({
 			1: {
 				inputs: { image: img.widgets.image.value, upload: "image" },
-				class_type: "LoadImage",
+				class_type: "InputNode",
 			},
 			2: {
 				inputs: { upscale_method: "nearest-exact", width: 100, height: 512, crop: "disabled", image: ["1", 0] },

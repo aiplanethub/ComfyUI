@@ -42,7 +42,7 @@ describe("extensions", () => {
 		expect(mockExtension.addCustomNodeDefs.mock.calls[0][1]).toStrictEqual(app);
 		const defs = mockExtension.addCustomNodeDefs.mock.calls[0][0];
 		expect(defs).toHaveProperty("KSampler");
-		expect(defs).toHaveProperty("LoadImage");
+		expect(defs).toHaveProperty("InputNode");
 
 		// Get custom widgets is called once and should return new widget types
 		expect(mockExtension.getCustomWidgets).toHaveBeenCalledTimes(1);
@@ -112,10 +112,10 @@ describe("extensions", () => {
 		graph.clear();
 
 		// Ensure adding a new node calls the correct callback
-		ez.LoadImage();
+		ez.InputNode();
 		expect(mockExtension.loadedGraphNode).toHaveBeenCalledTimes(graphData.nodes.length);
 		expect(mockExtension.nodeCreated).toHaveBeenCalledTimes(graphData.nodes.length + 1);
-		expect(mockExtension.nodeCreated.mock.lastCall[0].type).toBe("LoadImage");
+		expect(mockExtension.nodeCreated.mock.lastCall[0].type).toBe("InputNode");
 
 		// Reload the graph to ensure correct hooks are fired
 		await graph.reload();
