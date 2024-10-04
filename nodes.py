@@ -29,7 +29,7 @@ class InputNode:
     def INPUT_TYPES(cls):
         input_dir = folder_paths.get_input_directory()
         files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
-        default_file_value = "Selected file"
+        default_file_value = "No file selected"
         if not files:
             files = [default_file_value]
         return {
