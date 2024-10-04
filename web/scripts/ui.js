@@ -6,16 +6,22 @@ import { ComfySettingsDialog } from "./ui/settings.js";
 export const ComfyDialog = _ComfyDialog;
 
 /**
- * @template {string | (keyof HTMLElementTagNameMap)} K
- * @typedef {K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : HTMLElement} ElementType
+ * @template { string | (keyof HTMLElementTagNameMap) } K
+ * @typedef { K extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[K] : HTMLElement } ElementType
  */
 
 /**
- * @template {string | (keyof HTMLElementTagNameMap)} K
- * @param {K} tag HTML Element Tag and optional classes e.g. div.class1.class2
- * @param {string | Element | Element[] | (Object)} [propsOrChildren]
- * @param {string | Element | Element[] | undefined} [children]
- * @returns {ElementType<K>}
+ * @template { string | (keyof HTMLElementTagNameMap) } K
+ * @param { K } tag HTML Element Tag and optional classes e.g. div.class1.class2
+ * @param { string | Element | Element[] | ({
+ * 	 parent?: Element,
+ *   $?: (el: ElementType<K>) => void,
+ *   dataset?: DOMStringMap,
+ *   style?: Partial<CSSStyleDeclaration>,
+ * 	 for?: string
+ * } & Omit<Partial<ElementType<K>>, "style">) | undefined } [propsOrChildren]
+ * @param { string | Element | Element[] | undefined } [children]
+ * @returns { ElementType<K> }
  */
 export function $el(tag, propsOrChildren, children) {
   const split = tag.split(".");
@@ -30,7 +36,6 @@ export function $el(tag, propsOrChildren, children) {
     } else if (propsOrChildren instanceof Element) {
       propsOrChildren = [propsOrChildren];
     }
-
     if (Array.isArray(propsOrChildren)) {
       element.append(...propsOrChildren);
     } else {
@@ -53,7 +58,6 @@ export function $el(tag, propsOrChildren, children) {
       }
 
       Object.assign(element, propsOrChildren);
-
       if (children) {
         element.append(
           ...(children instanceof Array ? children.filter(Boolean) : [children])
@@ -69,24 +73,25 @@ export function $el(tag, propsOrChildren, children) {
       }
     }
   }
-
   return element;
 }
 
 function dragElement(dragEl, settings) {
-  let posDiffX = 0,
+  var posDiffX = 0,
     posDiffY = 0,
     posStartX = 0,
     posStartY = 0,
     newPosX = 0,
     newPosY = 0;
-
   if (dragEl.getElementsByClassName("drag-handle")[0]) {
+    // if present, the handle is where you move the DIV from:
     dragEl.getElementsByClassName("drag-handle")[0].onmousedown = dragMouseDown;
   } else {
+    // otherwise, move the DIV from anywhere inside the DIV:
     dragEl.onmousedown = dragMouseDown;
   }
 
+  // When the element resizes (e.g. view queue) ensure it is still in the windows bounds
   const resizeObserver = new ResizeObserver(() => {
     ensureInBounds();
   }).observe(dragEl);
@@ -104,7 +109,7 @@ function dragElement(dragEl, settings) {
 
       positionElement();
     } catch (exception) {
-      // Catch exceptions
+      // robust
     }
   }
 
@@ -114,6 +119,7 @@ function dragElement(dragEl, settings) {
     const halfWidth = document.body.clientWidth / 2;
     const anchorRight = newPosX + dragEl.clientWidth / 2 > halfWidth;
 
+    // set the element's new position:
     if (anchorRight) {
       dragEl.style.left = "unset";
       dragEl.style.right =
@@ -148,7 +154,7 @@ function dragElement(dragEl, settings) {
     }
   }
 
-  let savePos;
+  let savePos = undefined;
   settings.addSetting({
     id: "Comfy.MenuPosition",
     name: "Save menu position",
@@ -165,11 +171,11 @@ function dragElement(dragEl, settings) {
   function dragMouseDown(e) {
     e = e || window.event;
     e.preventDefault();
-
+    // get the mouse cursor position at startup:
     posStartX = e.clientX;
     posStartY = e.clientY;
-
     document.onmouseup = closeDragElement;
+    // call a function whenever the cursor moves:
     document.onmousemove = elementDrag;
   }
 
@@ -179,6 +185,7 @@ function dragElement(dragEl, settings) {
 
     dragEl.classList.add("comfy-menu-manual-pos");
 
+    // calculate the new cursor position:
     posDiffX = e.clientX - posStartX;
     posDiffY = e.clientY - posStartY;
     posStartX = e.clientX;
@@ -201,6 +208,7 @@ function dragElement(dragEl, settings) {
   });
 
   function closeDragElement() {
+    // stop moving when mouse button is released:
     document.onmouseup = null;
     document.onmousemove = null;
   }
@@ -235,6 +243,7 @@ class ComfyList {
         $el("div.comfy-list-items", [
           ...(this.#reverse ? items[section].reverse() : items[section]).map(
             (item) => {
+              // Allow items to specify a custom remove action (e.g. for interrupt current prompt)
               const removeAction = item.remove || {
                 name: "Delete",
                 cb: () => api.deleteItem(this.#type, item.prompt[1]),
@@ -329,6 +338,7 @@ export class ComfyUI {
       type: "boolean",
       defaultValue: true,
     });
+
     const promptFilename = this.settings.addSetting({
       id: "Comfy.PromptFilename",
       name: "Prompt for filename when saving workflow",
@@ -336,6 +346,17 @@ export class ComfyUI {
       defaultValue: true,
     });
 
+    /**
+     * file format for preview
+     *
+     * format;quality
+     *
+     * ex)
+     * webp;50 -> webp, quality 50
+     * jpeg;80 -> rgb, jpeg, quality 80
+     *
+     * @type {string}
+     */
     const previewImage = this.settings.addSetting({
       id: "Comfy.PreviewFormat",
       name: "When displaying a preview in the image widget, convert it to a lightweight image, e.g. webp, jpeg, webp;50, etc.",
@@ -372,7 +393,7 @@ export class ComfyUI {
     const fileInput = $el("input", {
       id: "comfy-file-input",
       type: "file",
-      accept: ".json,.pdf",
+      accept: ".json,image/png,.latent,.safetensors,image/webp,audio/flac",
       style: { display: "none" },
       parent: document.body,
       onchange: () => {
@@ -414,404 +435,347 @@ export class ComfyUI {
       }
     });
 
-    this.menuHamburger = $el(
-      "div.comfy-menu-hamburger",
-      {
-        parent: document.body,
-        onclick: () => {
-          this.menuContainer.style.display = "block";
-          this.menuHamburger.style.display = "none";
-        },
-      },
-      [$el("div"), $el("div"), $el("div")]
-    );
+    // this.menuHamburger = $el(
+    //   "div.comfy-menu-hamburger",
+    //   {
+    //     parent: document.body,
+    //     onclick: () => {
+    //       this.menuContainer.style.display = "block";
+    //       this.menuHamburger.style.display = "none";
+    //     },
+    //   },
+    //   [$el("div"), $el("div"), $el("div")]
+    // );
 
-    this.menuContainer = $el("div.comfy-menu", { parent: document.body }, [
-      $el(
-        "div.drag-handle.comfy-menu-header",
-        {
-          style: {
-            overflow: "hidden",
-            position: "relative",
-            width: "100%",
-            cursor: "default",
+    this.menuContainer = $el(
+      "div.comfy-menu",
+      { style: { display: "none" } },
+      { parent: document.body },
+      [
+        $el(
+          "div.drag-handle.comfy-menu-header",
+          {
+            style: {
+              overflow: "hidden",
+              position: "relative",
+              width: "100%",
+              cursor: "default",
+            },
           },
-        },
-        [
-          $el("span.drag-handle"),
-          $el("span.comfy-menu-queue-size", { $: (q) => (this.queueSize = q) }),
-          $el("div.comfy-menu-actions", [
-            $el("button.comfy-settings-btn", {
-              textContent: "⚙",
-              onclick: () => this.settings.show(),
+          [
+            $el("span.drag-handle"),
+            $el("span.comfy-menu-queue-size", {
+              $: (q) => (this.queueSize = q),
             }),
-            $el("button.comfy-close-menu-btn", {
-              textContent: "\u00d7",
-              onclick: () => {
-                this.menuContainer.style.display = "none";
-                this.menuHamburger.style.display = "flex";
+            $el("div.comfy-menu-actions", [
+              $el("button.comfy-settings-btn", {
+                textContent: "⚙️",
+                onclick: () => this.settings.show(),
+              }),
+              $el("button.comfy-close-menu-btn", {
+                textContent: "\u00d7",
+                onclick: () => {
+                  this.menuContainer.style.display = "none";
+                  // this.menuHamburger.style.display = "flex";/
+                },
+              }),
+            ]),
+          ]
+        ),
+        $el("button.comfy-queue-btn", {
+          id: "queue-button",
+          textContent: "Queue Prompt",
+          onclick: () => {
+            app.queuePrompt(0, this.batchCount);
+          },
+        }),
+
+        $el("div", {}, [
+          $el("label", { innerHTML: "Extra options" }, [
+            $el("input", {
+              type: "checkbox",
+              onchange: (i) => {
+                document.getElementById("extraOptions").style.display = i
+                  .srcElement.checked
+                  ? "block"
+                  : "none";
+                this.batchCount = i.srcElement.checked
+                  ? document.getElementById("batchCountInputRange").value
+                  : 1;
+                document.getElementById("autoQueueCheckbox").checked = false;
+                this.autoQueueEnabled = false;
               },
             }),
           ]),
-        ]
-      ),
-      $el("button.comfy-queue-btn", {
-        id: "queue-button",
-        textContent: "Queue Prompt",
-        onclick: () => {
-          app.queuePrompt(0, this.batchCount);
-        },
-      }),
-
-      $el("div", {}, [
-        $el("label", { innerHTML: "Extra options" }, [
-          $el("input", {
-            type: "checkbox",
-            onchange: (i) => {
-              document.getElementById("extraOptions").style.display = i
-                .srcElement.checked
-                ? "block"
-                : "none";
-              this.batchCount = i.srcElement.checked
-                ? document.getElementById("batchCountInputRange").value
-                : 1;
-              document.getElementById("autoQueueCheckbox").checked = false;
-              this.autoQueueEnabled = false;
+        ]),
+        $el(
+          "div",
+          { id: "extraOptions", style: { width: "100%", display: "none" } },
+          [
+            $el("div", [
+              $el("label", { innerHTML: "Batch count" }),
+              $el("input", {
+                id: "batchCountInputNumber",
+                type: "number",
+                value: this.batchCount,
+                min: "1",
+                style: { width: "35%", "margin-left": "0.4em" },
+                oninput: (i) => {
+                  this.batchCount = i.target.value;
+                  document.getElementById("batchCountInputRange").value =
+                    this.batchCount;
+                },
+              }),
+              $el("input", {
+                id: "batchCountInputRange",
+                type: "range",
+                min: "1",
+                max: "100",
+                value: this.batchCount,
+                oninput: (i) => {
+                  this.batchCount = i.srcElement.value;
+                  document.getElementById("batchCountInputNumber").value =
+                    i.srcElement.value;
+                },
+              }),
+            ]),
+            $el("div", [
+              $el("label", {
+                for: "autoQueueCheckbox",
+                innerHTML: "Auto Queue",
+              }),
+              $el("input", {
+                id: "autoQueueCheckbox",
+                type: "checkbox",
+                checked: false,
+                title: "Automatically queue prompt when the queue size hits 0",
+                onchange: (e) => {
+                  this.autoQueueEnabled = e.target.checked;
+                  autoQueueModeEl.style.display = this.autoQueueEnabled
+                    ? ""
+                    : "none";
+                },
+              }),
+              autoQueueModeEl,
+            ]),
+          ]
+        ),
+        $el("div.comfy-menu-btns", [
+          $el("button", {
+            id: "queue-front-button",
+            textContent: "Queue Front",
+            onclick: () => app.queuePrompt(-1, this.batchCount),
+          }),
+          $el("button", {
+            $: (b) => (this.queue.button = b),
+            id: "comfy-view-queue-button",
+            textContent: "View Queue",
+            onclick: () => {
+              this.history.hide();
+              this.queue.toggle();
+            },
+          }),
+          $el("button", {
+            $: (b) => (this.history.button = b),
+            id: "comfy-view-history-button",
+            textContent: "View History",
+            onclick: () => {
+              this.queue.hide();
+              this.history.toggle();
             },
           }),
         ]),
-      ]),
-      $el(
-        "div",
-        { id: "extraOptions", style: { width: "100%", display: "none" } },
-        [
-          $el("div", [
-            $el("label", { innerHTML: "Batch count" }),
-            $el("input", {
-              id: "batchCountInputNumber",
-              type: "number",
-              value: this.batchCount,
-              min: "1",
-              style: { width: "35%", "margin-left": "0.4em" },
-              oninput: (i) => {
-                this.batchCount = i.target.value;
-                document.getElementById("batchCountInputRange").value =
-                  this.batchCount;
-              },
-            }),
-            $el("input", {
-              id: "batchCountInputRange",
-              type: "range",
-              min: "1",
-              max: "100",
-              value: this.batchCount,
-              oninput: (i) => {
-                this.batchCount = i.srcElement.value;
-                document.getElementById("batchCountInputNumber").value =
-                  i.srcElement.value;
-              },
-            }),
-          ]),
-          $el("div", [
-            $el("label", {
-              for: "autoQueueCheckbox",
-              innerHTML: "Auto Queue",
-            }),
-            $el("input", {
-              id: "autoQueueCheckbox",
-              type: "checkbox",
-              checked: false,
-              title: "Automatically queue prompt when the queue size hits 0",
-              onchange: (e) => {
-                this.autoQueueEnabled = e.target.checked;
-                autoQueueModeEl.style.display = this.autoQueueEnabled
-                  ? ""
-                  : "none";
-              },
-            }),
-            autoQueueModeEl,
-          ]),
-        ]
-      ),
-      $el("div.comfy-menu-btns", [
+        this.queue.element,
+        this.history.element,
         $el("button", {
-          id: "queue-front-button",
-          textContent: "Queue Front",
-          onclick: () => app.queuePrompt(-1, this.batchCount),
-        }),
-        $el("button", {
-          $: (b) => (this.queue.button = b),
-          id: "comfy-view-queue-button",
-          textContent: "View Queue",
+          id: "comfy-save-button",
+          textContent: "Save",
           onclick: () => {
-            this.history.hide();
-            this.queue.toggle();
+            let filename = "workflow.json";
+            if (promptFilename.value) {
+              filename = prompt("Save workflow as:", filename);
+              if (!filename) return;
+              if (!filename.toLowerCase().endsWith(".json")) {
+                filename += ".json";
+              }
+            }
+            app.graphToPrompt().then((p) => {
+              const json = JSON.stringify(p.workflow, null, 2); // convert the data to a JSON string
+              const blob = new Blob([json], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = $el("a", {
+                href: url,
+                download: filename,
+                style: { display: "none" },
+                parent: document.body,
+              });
+              a.click();
+              setTimeout(function () {
+                a.remove();
+                window.URL.revokeObjectURL(url);
+              }, 0);
+            });
           },
         }),
         $el("button", {
-          $: (b) => (this.history.button = b),
-          id: "comfy-view-history-button",
-          textContent: "View History",
+          id: "comfy-dev-save-api-button",
+          textContent: "Save (API Format)",
+          style: { width: "100%", display: "none" },
           onclick: () => {
-            this.queue.hide();
-            this.history.toggle();
+            let filename = "workflow_api.json";
+            if (promptFilename.value) {
+              filename = prompt("Save workflow (API) as:", filename);
+              if (!filename) return;
+              if (!filename.toLowerCase().endsWith(".json")) {
+                filename += ".json";
+              }
+            }
+            app.graphToPrompt().then((p) => {
+              const json = JSON.stringify(p.output, null, 2); // convert the data to a JSON string
+              const blob = new Blob([json], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = $el("a", {
+                href: url,
+                download: filename,
+                style: { display: "none" },
+                parent: document.body,
+              });
+              a.click();
+              setTimeout(function () {
+                a.remove();
+                window.URL.revokeObjectURL(url);
+              }, 0);
+            });
           },
         }),
-      ]),
-      this.queue.element,
-      this.history.element,
-      $el("button", {
-        id: "comfy-save-api-button",
-        textContent: "Save to API",
-        onclick: async () => {
-          const application_id = prompt(
-            "Enter the application ID to save the workflow:"
-          );
-          if (!application_id) return alert("Application ID is required.");
+        $el("button", {
+          id: "comfy-load-button",
+          textContent: "Load",
+          onclick: () => fileInput.click(),
+        }),
+        $el("button", {
+          id: "comfy-refresh-button",
+          textContent: "Refresh",
+          onclick: () => app.refreshComboInNodes(),
+        }),
+        $el("button", {
+          id: "comfy-clipspace-button",
+          textContent: "Clipspace",
+          onclick: () => app.openClipspace(),
+        }),
+        $el("button", {
+          id: "comfy-clear-button",
+          textContent: "Clear",
+          onclick: () => {
+            if (!confirmClear.value || confirm("Clear workflow?")) {
+              app.clean();
+              app.graph.clear();
+              app.resetView();
+            }
+          },
+        }),
+        $el("button", {
+          id: "comfy-load-default-button",
+          textContent: "Load Default",
+          onclick: async () => {
+            if (!confirmClear.value || confirm("Load default workflow?")) {
+              app.resetView();
 
-          const username = "abc@gmail.com";
-          const password = "abc";
+              // replace with your username and password here
+              const username = "abc@gmail.com";
+              if (!username) return alert("Username is required.");
 
-          let accessToken;
-          try {
-            const response = await fetch(
-              `${window.env.ACCESS_TOKEN_API_BASE_URL}/`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({
-                  username: username,
-                  password: password,
-                }),
+              const password = "abc";
+              if (!password) return alert("Password is required.");
+
+              // Fetch access token
+              let accessToken;
+              try {
+                const response = await fetch(
+                  `${window.env.ACCESS_TOKEN_API_BASE_URL}/`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: new URLSearchParams({
+                      username: username,
+                      password: password,
+                    }),
+                  }
+                );
+
+                if (!response.ok) throw new Error("Failed to authenticate.");
+
+                const data = await response.json();
+                accessToken = data.access_token;
+                localStorage.setItem("access_token", accessToken);
+                alert("Access token stored successfully.");
+              } catch (error) {
+                console.error("Error fetching access token:", error);
+                return alert("Failed to retrieve access token.");
               }
-            );
 
-            if (!response.ok) throw new Error("Failed to authenticate.");
+              // Ask for application ID
+              const application_id = prompt(
+                "Enter the application ID to load:"
+              );
+              if (!application_id) return alert("Application ID is required.");
 
-            const data = await response.json();
-            accessToken = data.access_token;
+              // Fetch and load the graph data using the access token and application ID
+              try {
+                const response = await fetch(
+                  `${window.env.APPLICATION_API_BASE_URL}${application_id}/create-template`,
+                  {
+                    method: "PATCH",
+                    headers: {
+                      Authorization: `Bearer ${accessToken}`,
+                    },
+                  }
+                );
 
-            localStorage.setItem("access_token", accessToken);
-          } catch (error) {
-            console.error("Error fetching access token:", error);
-            return alert("Failed to retrieve access token.");
-          }
+                if (!response.ok)
+                  throw new Error("Failed to load application template.");
 
-          const workflowData = await app
-            .graphToPrompt()
-            .then((p) => p.workflow);
-          console.log(workflowData);
+                const p = await response.json();
+                console.log("Fetched graph data:", p);
 
-          try {
-            const response = await fetch(
-              `${window.env.APPLICATION_API_BASE_URL}${application_id}/save-template`,
-              {
-                method: "PUT",
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  workflow_data: workflowData,
-                  autosave: false,
-                }),
+                // Load the graph data
+                await app.loadGraphData(p.workflow);
+
+                // Save the loaded workflow to localStorage
+                localStorage.setItem(
+                  "stored_workflow",
+                  JSON.stringify(p.workflow)
+                );
+                alert("Workflow loaded and saved successfully.");
+              } catch (error) {
+                console.error("Error loading the graph data:", error);
+                return alert("Failed to load the graph data.");
               }
-            );
+            }
+          },
+        }),
 
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(
-                errorData.detail || "Failed to save the workflow."
-              );
-            }
-
-            const result = await response.json();
-            alert(result.msg || "Workflow saved successfully to the API!");
-          } catch (error) {
-            console.error("Error saving workflow:", error);
-            alert(error.message || "Failed to save the workflow to the API.");
-          }
-        },
-      }),
-      $el("button", {
-        id: "comfy-save-button",
-        textContent: "Save",
-        onclick: () => {
-          let filename = "workflow.json";
-          if (promptFilename.value) {
-            filename = prompt("Save workflow as:", filename);
-            if (!filename) return;
-            if (!filename.toLowerCase().endsWith(".json")) {
-              filename += ".json";
-            }
-          }
-          app.graphToPrompt().then((p) => {
-            const json = JSON.stringify(p.workflow, null, 2);
-            const blob = new Blob([json], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = $el("a", {
-              href: url,
-              download: filename,
-              style: { display: "none" },
-              parent: document.body,
-            });
-            a.click();
-            setTimeout(function () {
-              a.remove();
-              window.URL.revokeObjectURL(url);
-            }, 0);
-          });
-        },
-      }),
-      $el("button", {
-        id: "comfy-dev-save-api-button",
-        textContent: "Save (API Format)",
-        style: { width: "100%", display: "none" },
-        onclick: () => {
-          let filename = "workflow_api.json";
-          if (promptFilename.value) {
-            filename = prompt("Save workflow (API) as:", filename);
-            if (!filename) return;
-            if (!filename.toLowerCase().endsWith(".json")) {
-              filename += ".json";
-            }
-          }
-          app.graphToPrompt().then((p) => {
-            const json = JSON.stringify(p.output, null, 2);
-            const blob = new Blob([json], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = $el("a", {
-              href: url,
-              download: filename,
-              style: { display: "none" },
-              parent: document.body,
-            });
-            a.click();
-            setTimeout(function () {
-              a.remove();
-              window.URL.revokeObjectURL(url);
-            }, 0);
-          });
-        },
-      }),
-      $el("button", {
-        id: "comfy-load-button",
-        textContent: "Load",
-        onclick: () => fileInput.click(),
-      }),
-      $el("button", {
-        id: "comfy-refresh-button",
-        textContent: "Refresh",
-        onclick: () => app.refreshComboInNodes(),
-      }),
-      $el("button", {
-        id: "comfy-clipspace-button",
-        textContent: "Clipspace",
-        onclick: () => app.openClipspace(),
-      }),
-      $el("button", {
-        id: "comfy-clear-button",
-        textContent: "Clear",
-        onclick: () => {
-          if (!confirmClear.value || confirm("Clear workflow?")) {
-            app.clean();
-            app.graph.clear();
+        $el("button", {
+          id: "comfy-reset-view-button",
+          textContent: "Reset View",
+          onclick: async () => {
             app.resetView();
-          }
-        },
-      }),
-      $el("button", {
-        id: "comfy-load-default-button",
-        textContent: "Load Default",
-        onclick: async () => {
-          if (!confirmClear.value || confirm("Load default workflow?")) {
-            app.resetView();
-
-            const username = "abc@gmail.com";
-            if (!username) return alert("Username is required.");
-
-            const password = "abc";
-            if (!password) return alert("Password is required.");
-
-            let accessToken;
-            try {
-              const response = await fetch(
-                `${window.env.ACCESS_TOKEN_API_BASE_URL}/`,
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                  },
-                  body: new URLSearchParams({
-                    username: username,
-                    password: password,
-                  }),
-                }
-              );
-
-              if (!response.ok) throw new Error("Failed to authenticate.");
-
-              const data = await response.json();
-              accessToken = data.access_token;
-              localStorage.setItem("access_token", accessToken);
-              alert("Access token stored successfully.");
-            } catch (error) {
-              console.error("Error fetching access token:", error);
-              return alert("Failed to retrieve access token.");
-            }
-
-            const application_id = prompt("Enter the application ID to load:");
-            if (!application_id) return alert("Application ID is required.");
-
-            try {
-              const response = await fetch(
-                `${window.env.APPLICATION_API_BASE_URL}${application_id}/template`,
-                {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                  },
-                }
-              );
-
-              if (!response.ok)
-                throw new Error("Failed to load application template.");
-
-              const p = await response.json();
-              console.log("Fetched graph data:", p);
-
-              await app.loadGraphData(p);
-
-              localStorage.setItem("stored_workflow", JSON.stringify(p));
-              alert("Workflow loaded and saved successfully.");
-            } catch (error) {
-              console.error("Error loading the graph data:", error);
-              return alert("Failed to load the graph data.");
-            }
-          }
-        },
-      }),
-
-      $el("button", {
-        id: "comfy-reset-view-button",
-        textContent: "Reset View",
-        onclick: async () => {
-          app.resetView();
-        },
-      }),
-    ]);
+          },
+        }),
+      ]
+    );
 
     const devMode = this.settings.addSetting({
       id: "Comfy.DevMode",
       name: "Enable Dev mode Options",
       type: "boolean",
       defaultValue: false,
-      onChange: function (value) {
-        document.getElementById("comfy-dev-save-api-button").style.display =
-          value ? "flex" : "none";
-      },
+      // onChange: function (value) {
+      //   document.getElementById("comfy-dev-save-api-button").style.display =
+      //     value ? "flex" : "none";
+      // },
     });
 
     this.restoreMenuPosition = dragElement(this.menuContainer, this.settings);
@@ -824,8 +788,8 @@ export class ComfyUI {
       "Queue size: " + (status ? status.exec_info.queue_remaining : "ERR");
     if (status) {
       if (
-        this.lastQueueSize !== 0 &&
-        status.exec_info.queue_remaining === 0 &&
+        this.lastQueueSize != 0 &&
+        status.exec_info.queue_remaining == 0 &&
         this.autoQueueEnabled &&
         (this.autoQueueMode === "instant" || this.graphHasChanged) &&
         !app.lastExecutionError
@@ -838,4 +802,3 @@ export class ComfyUI {
     }
   }
 }
-
