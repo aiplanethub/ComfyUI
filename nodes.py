@@ -4,11 +4,6 @@ import sys
 import traceback
 import time
 import logging
-from PIL import Image, ImageOps, ImageSequence, ImageFile
-import node_helpers
-
-import numpy as np
-import torch
 import folder_paths
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "comfy"))
