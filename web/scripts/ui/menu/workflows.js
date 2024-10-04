@@ -159,9 +159,9 @@ export class ComfyWorkflowsMenu {
 				function getImageWidget(node) {
 					const inputs = { ...node.constructor?.nodeData?.input?.required, ...node.constructor?.nodeData?.input?.optional };
 					for (const input in inputs) {
-						if (inputs[input][0] === "IMAGEUPLOAD") {
-							const imageWidget = node.widgets.find((w) => w.name === (inputs[input]?.[1]?.widget ?? "image"));
-							if (imageWidget) return imageWidget;
+						if (inputs[input][0] === "FILEUPLOAD") {
+							const fileWidget = node.widgets.find((w) => w.name === (inputs[input]?.[1]?.widget ?? "file"));
+							if (fileWidget) return fileWidget;
 						}
 					}
 				}

@@ -4,7 +4,7 @@ import folder_paths
 MAX_RESOLUTION = nodes.MAX_RESOLUTION
 
 
-class WebcamCapture(nodes.LoadImage):
+class WebcamCapture(nodes.InputNode):
     @classmethod
     def INPUT_TYPES(s):
         return {

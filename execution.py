@@ -155,6 +155,14 @@ def recursive_execute(server, prompt, outputs, current_item, extra_data, execute
             outputs_ui[unique_id] = output_ui
             if server.client_id is not None:
                 server.send_sync("executed", { "node": unique_id, "output": output_ui, "prompt_id": prompt_id }, server.client_id)
+        # for i, output in enumerate(output_data):
+        #     output_create_data = {
+        #         "application_id": "your-hardcoded-application-id",  # Replace with your actual hardcoded value
+        #         "prompt_id": prompt_id,
+        #         "node_id": unique_id,
+        #         "result": output,  # Assuming 'output' is the result for this specific output
+        #         "node_type": class_type
+        #     }
     except comfy.model_management.InterruptProcessingException as iex:
         logging.info("Processing interrupted")
 

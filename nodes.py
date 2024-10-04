@@ -1,3 +1,4 @@
+import hashlib
 import os
 import sys
 import traceback
@@ -26,25 +27,51 @@ import logging
 class InputNode:
     @classmethod
     def INPUT_TYPES(cls):
+        input_dir = folder_paths.get_input_directory()
+        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+        default_file_value = "No file selected"
+        if not files:
+            files = [default_file_value]
         return {
             "required": {
                 "instruction": ("STRING", {"multiline": False}),
                 "name": ("STRING", {"multiline": False}),
+                "file": (sorted(files), {"file_upload": True}),
             },
+            "optional" : {
+                "query": ("STRING", {"multiline": True})
+            }
         }
 
+    CATEGORY = "input"
     RETURN_TYPES = ("INPUT",)
-    FUNCTION = "process"
-    CATEGORY = "Input"
+    FUNCTION = "load_files"
 
-    def process(self, instruction, name):
-        payload = {
-            "instruction": instruction,
-            "name": name
-        }
-        return (payload,)
+    def load_files(self, file, instruction, name, query):
+        file_path = folder_paths.get_annotated_filepath(file)
 
+        # Log the instruction, name, and file path
+        logging.info(f"Instruction: {instruction}")
+        logging.info(f"Name: {name}")
+        logging.info(f"File Path: {file_path}")
+        logging.info(f"Query: {query}")
 
+        return (file_path,)
+
+    @classmethod
+    def IS_CHANGED(cls, file):
+        file_path = folder_paths.get_annotated_filepath(file)
+        m = hashlib.sha256()
+        with open(file_path, 'rb') as f:
+            m.update(f.read())
+        return m.digest().hex()
+
+    @classmethod
+    def VALIDATE_INPUTS(cls, file):
+        if not folder_paths.exists_annotated_filepath(file):
+            return "Invalid file: {}".format(file)
+
+        return True
 class LLMNode:
     LLM_PROVIDERS = ['openai', 'azure', 'groq', 'cohere', 'gemini'] 
     @classmethod
@@ -247,13 +274,12 @@ class OutputNode:
 
         return (payload,)
     
-
 # ComfyUI node registration
 NODE_CLASS_MAPPINGS = {
-    "InputNode": InputNode,
     "LLMNode": LLMNode,
     "KnowledgeBaseNode": KnowledgeBaseNode,
     "ToolsNode": ToolsNode,
+    "InputNode": InputNode,
     "TaskPlannerNode": TaskPlannerNode,
     "WorkerNode": WorkerNode,
     "OutputNode": OutputNode,
@@ -261,10 +287,11 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "InputNode": "Input",
+    "Input1Node": "Input1",
     "LLMNode": "LLM Processor",
     "KnowledgeBaseNode": "Knowledge Base",
     "ToolsNode": "Tools",
+    "InputNode": "Input",
     "TaskPlannerNode": "Task Planner",
     "WorkerNode": "Worker",
     "OutputNode": "Output",

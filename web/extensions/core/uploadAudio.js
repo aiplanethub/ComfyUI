@@ -35,7 +35,7 @@ async function uploadFile(
     const body = new FormData()
     body.append("image", file)
     if (pasted) body.append("subfolder", "pasted")
-    const resp = await api.fetchApi("/upload/image", {
+    const resp = await api.fetchApi("/upload/file", {
       method: "POST",
       body
     })
