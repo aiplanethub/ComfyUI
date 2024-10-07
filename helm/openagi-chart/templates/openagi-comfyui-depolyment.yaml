@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openagi-comfyui
+  namespace: openagi
+spec:
+  replicas: {{ .Values.openagi_comfyui.replicas }}
+  selector:
+    matchLabels:
+      app: openagi-comfyui
+  template:
+    metadata:
+      labels:
+        app: openagi-comfyui
+    spec:
+      containers:
+      - name: openagi-comfyui-container
+        image: {{ .Values.openagi_comfyui.image }}
+        ports:
+        - containerPort: 8188
+        resources:
+          limits:
+            memory: {{ .Values.openagi_comfyui.resources.limits.memory }}
+            cpu: {{ .Values.openagi_comfyui.resources.limits.cpu }}
+          requests:
+            memory: {{ .Values.openagi_comfyui.resources.requests.memory }}
+            cpu: {{ .Values.openagi_comfyui.resources.requests.cpu }}
+      restartPolicy: Always

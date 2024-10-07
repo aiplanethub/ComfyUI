@@ -1,0 +1,92 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [main, staging, production,ci-cd]
+    paths-ignore:
+    - 'helm/**'
+    - 'README.md'
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE_NAME: afwtech/openagi
+      IMAGE_TAG_PREFIX: stage_openagi_comfyui
+
+    outputs:
+      image_name: ${{ env.IMAGE_NAME }}
+      image_version: ${{ steps.image.outputs.version }}
+
+    steps:
+    # Checkout code from the current repository (Docker Repo)
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Set up Docker Buildx
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # Get current date, time, and Git short SHA
+    - name: Set image version
+      id: image
+      run: |
+        DATE_TAG=$(date +'%Y%m%d-%H%M%S')
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        IMAGE_VERSION="${{ env.IMAGE_TAG_PREFIX }}-${DATE_TAG}-${SHORT_SHA}"
+        echo "IMAGE_VERSION=${IMAGE_VERSION}" >> $GITHUB_ENV
+        echo "::set-output name=version::${IMAGE_VERSION}"
+
+    # Log in to DockerHub
+    - name: Log in to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_EMAIL }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    # Remove dangling images if any exist
+    - name: Cleanup dangling images
+      run: |
+        # Check if there are dangling images and remove them
+        if [ -n "$(docker images -f "dangling=true" -q)" ]; then
+          docker rmi $(docker images -f "dangling=true" -q)
+        fi
+
+    # Build the Docker image without using cache
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }} .
+
+    # Push the Docker image to DockerHub
+    - name: Push Docker image
+      run: |
+        docker push ${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }}
+
+
+  update-newtag-in-helm-chart:
+    runs-on: ubuntu-latest
+
+    needs: push
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.CI_GITHUB_TOKEN }}
+
+    - name: Update Helm values.yaml
+      run: |
+        # Download yq binary
+        wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+        chmod +x /usr/local/bin/yq  # Make yq executable
+        # Update the image in values.yaml with the version and image name from the 'push' job
+        yq e '.openagi_comfyui.image = "${{ needs.push.outputs.image_name }}:${{ needs.push.outputs.image_version }}"' -i helm/openagi-chart/values.yaml
+
+    - name: Commit, pull, and push changes
+      run: |
+        git config --local user.email "jyothi@aiplanet.com"
+        git config --local user.name "GitHub Action"
+        git add helm/openagi-chart/values.yaml
+        git commit -m "Update image version to ${{ needs.push.outputs.image_version }}"
+        git push origin

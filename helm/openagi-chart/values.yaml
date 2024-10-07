@@ -1,0 +1,12 @@
+openagi_comfyui:
+  image: afwtech/openagi:stage_openagi_comfyui-0.0.7
+  replicas: 1
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "100Mi"
+      cpu: "100m"
+
+
